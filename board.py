@@ -3,6 +3,7 @@ from knight import Knight
 from rook import Rook
 from queen import Queen
 from king import King
+from decode_fenn_piece import type_from_char
 
 class Board:
     def __init__(self, size):
@@ -61,5 +62,6 @@ class Board:
             elif char.isdigit():
                 file += int(char)
             else:
-                self.board[rank][file] = char
+                (color, type) = type_from_char(char)
+                self.add_piece(color, type, file, rank)
                 file += 1

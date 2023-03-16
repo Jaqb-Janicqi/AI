@@ -1,6 +1,6 @@
 # fenn notation piece decoder
 
-def fenn_char(color, type):
+def char_from_type(color, type):
     if color == 'White':
         if type == 'Pawn':
             return 'P'
@@ -31,3 +31,25 @@ def fenn_char(color, type):
             return 'k'
         else:
             return ' '
+        
+def type_from_char(char):
+    if char.isupper():
+        color = 'White'
+    else:
+        color = 'Black'
+        char = char.upper()
+
+    if char == 'P':
+        return (color, 'Pawn')
+    elif char == 'N':
+        return (color, 'Knight')
+    elif char == 'B':
+        return (color, 'Bishop')
+    elif char == 'R':
+        return (color, 'Rook')
+    elif char == 'Q':
+        return (color, 'Queen')
+    elif char == 'K':
+        return (color, 'King')
+    else:
+        return ('', '')

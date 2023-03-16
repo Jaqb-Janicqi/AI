@@ -1,10 +1,10 @@
-from fenn_decode import fenn_char
+from decode_fenn_piece import char_from_type
 
 class Piece:
     def __init__(self, color, type):
         self.color = color
         self.type = type
-        self.fenn = fenn_char(color, type)
+        self.fenn = char_from_type(color, type)
         self.id = self.assign_id()
         self.value = self.__assign_value()        
 
