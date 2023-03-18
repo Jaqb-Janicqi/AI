@@ -6,7 +6,8 @@ class Piece:
         self.type = type
         self.fenn = char_from_type(color, type)
         self.id = self.assign_id()
-        self.value = self.__assign_value()        
+        self.value = self.__assign_value()
+        self.move_set=[]  
 
     def assign_id(self):
         if self.type == 'Pawn':
