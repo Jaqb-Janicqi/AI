@@ -1,37 +1,36 @@
 # fenn notation piece decoder
 
-def char_from_type(color, type):
+def char_from_type(color, piece_type):
     if color == 'White':
-        if type == 'Pawn':
+        if piece_type == 'Pawn':
             return 'P'
-        elif type == 'Knight':
+        if piece_type == 'Knight':
             return 'N'
-        elif type == 'Bishop':
+        if piece_type == 'Bishop':
             return 'B'
-        elif type == 'Rook':
+        if piece_type == 'Rook':
             return 'R'
-        elif type == 'Queen':
+        if piece_type == 'Queen':
             return 'Q'
-        elif type == 'King':
+        if piece_type == 'King':
             return 'K'
-        else:
-            return ' '
-    else:
-        if type == 'Pawn':
-            return 'p'
-        elif type == 'Knight':
-            return 'n'
-        elif type == 'Bishop':
-            return 'b'
-        elif type == 'Rook':
-            return 'r'
-        elif type == 'Queen':
-            return 'q'
-        elif type == 'King':
-            return 'k'
-        else:
-            return ' '
-        
+        return ' '
+
+    if piece_type == 'Pawn':
+        return 'p'
+    if piece_type == 'Knight':
+        return 'n'
+    if piece_type == 'Bishop':
+        return 'b'
+    if piece_type == 'Rook':
+        return 'r'
+    if piece_type == 'Queen':
+        return 'q'
+    if piece_type == 'King':
+        return 'k'
+    return ' '
+
+
 def type_from_char(char):
     if char.isupper():
         color = 'White'
@@ -41,15 +40,14 @@ def type_from_char(char):
 
     if char == 'P':
         return (color, 'Pawn')
-    elif char == 'N':
+    if char == 'N':
         return (color, 'Knight')
-    elif char == 'B':
+    if char == 'B':
         return (color, 'Bishop')
-    elif char == 'R':
+    if char == 'R':
         return (color, 'Rook')
-    elif char == 'Q':
+    if char == 'Q':
         return (color, 'Queen')
-    elif char == 'K':
+    if char == 'K':
         return (color, 'King')
-    else:
-        return ('', '')
+    return ('', '')

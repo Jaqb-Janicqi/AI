@@ -4,6 +4,8 @@ from rook import Rook
 from queen import Queen
 from king import King
 from decode_fenn_piece import type_from_char
+from move import Move
+
 
 class Board:
     def __init__(self, size):
@@ -20,8 +22,10 @@ class Board:
         self.__black_rooks = []
         self.__black_queens = []
         self.__win_state = None
+        self.player_color = "White"
+        self.player_turn = "White"
 
-    def print(self): # print matrix of the board with fenn notation for pieces
+    def print(self):  # print matrix of the board with fenn notation for pieces
         for rank in range(self.size):
             print(rank, end='  ')
             for file in range(self.size):
@@ -36,33 +40,33 @@ class Board:
         for file in range(self.size):
             print(file, end=' ')
 
-    def add_piece(self, color, type, file, rank):
+    def add_piece(self, color, piece_type, file, rank):
         # add piece based on type
-        if type == 'Pawn':
+        if piece_type == 'Pawn':
             self.__board[rank][file] = Pawn(color, file, rank)
             if color == 'White':
                 self.__white_pawns.append(self.__board[rank][file])
             else:
                 self.__black_pawns.append(self.__board[rank][file])
-        elif type == 'Knight':
+        elif piece_type == 'Knight':
             self.__board[rank][file] = Knight(color, file, rank)
             if color == 'White':
                 self.__white_knights.append(self.__board[rank][file])
             else:
                 self.__black_knights.append(self.__board[rank][file])
-        elif type == 'Rook':
+        elif piece_type == 'Rook':
             self.__board[rank][file] = Rook(color, file, rank)
             if color == 'White':
                 self.__white_rooks.append(self.__board[rank][file])
             else:
                 self.__black_rooks.append(self.__board[rank][file])
-        elif type == 'Queen':
+        elif piece_type == 'Queen':
             self.__board[rank][file] = Queen(color, file, rank)
             if color == 'White':
                 self.__white_queens.append(self.__board[rank][file])
             else:
                 self.__black_queens.append(self.__board[rank][file])
-        elif type == 'King':
+        elif piece_type == 'King':
             self.__board[rank][file] = King(color, file, rank)
             if color == 'White':
                 self.__white_king = self.__board[rank][file]
@@ -101,44 +105,48 @@ class Board:
             elif char.isdigit():
                 file += int(char)
             else:
-                (color, type) = type_from_char(char)
-                self.add_piece(color, type, file, self.size - 1 - rank)
+                (color, piece_type) = type_from_char(char)
+                self.add_piece(color, piece_type, file, self.size - 1 - rank)
                 file += 1
 
     def is_valid_move(self, move, color):
         # check if move (file, rank) is in bounds and not occupied by same color
-        if self.is_in_bounds(move) and not self.is_occupied_by_same_color(move, color):
-            return True
+        if self.is_in_bounds(move):
+            if not self.is_occupied_by_same_color(move, color):
+                return True
         return False
-    
-    def is_in_bounds(self, file, rank):
+
+    def is_in_bounds(self, move):
         # check if move (file, rank) is in bounds of the board
+        (file, rank) = move
         if file < 0 or file >= self.size or rank < 0 or rank >= self.size:
             return False
         return True
-    
+
     def is_occupied(self, move):
         # check if move (file, rank) is occupied by a piece
         (file, rank) = move
-        if self.__board[rank][file] != 0:
+        if self.__board[rank][file] is not None:
             return True
         return False
 
-    def is_occupied_by_same_color(self, file, rank, color):
+    def is_occupied_by_same_color(self, move, color):
         # check if move (file, rank) is occupied by a piece of the same color
-        if self.__board[rank][file] != 0:
-            if self.__board[rank][file].color == color:
+        (file, rank) = move
+        if self.__board[rank][file] is not None:
+            if self.__board[rank][file] is None or self.__board[rank][file].color == color:
                 return True
         return False
-    
 
-    # this may not be needed, one can capture the king instead
-    # def is_attacked(self, move, color):
-    #     # check if move (file, rank) is attacked by other color
-    #     if color == 'White':
-    #         return self.is_attacked_by_black(move)
-    #     else:
-    #         return self.is_attacked_by_white(move)
+    def square(self, file, rank):
+        return self.__board[rank][file]
+
+    def push(self, move):
+        self.__board[move.dest_rank][move.dest_file] = self.__board[move.piece.rank][move.piece.file]
+        self.__board[move.piece.rank][move.piece.file] = None
+        self.__board[move.dest_rank][move.dest_file].rank = move.dest_rank
+        self.__board[move.dest_rank][move.dest_file].file = move.dest_file
+        self.__board[move.dest_rank][move.dest_file].moved()
 
     @property
     def win_state(self):

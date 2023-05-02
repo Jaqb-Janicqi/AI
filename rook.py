@@ -1,11 +1,15 @@
 from piece import Piece
+from move import Move
+
 
 class Rook(Piece):
-    def __init__(self, color, file, rank): # color, type, file, rank
+    def __init__(self, color, file, rank):  # color, type, file, rank
         super().__init__(color, 'Rook', file, rank)
-        self.__can_castle = True
-        self.__sliding = True
-        self.__range = (2,2,0) # (file, rank, diagonal)
+        self.can_castle = True
 
     def moved(self):
-        self.__can_castle = False
+        self.can_castle = False
+
+    def generate_moves(self, board):
+        self.moves = []
+        self.generate_horizontal_vertical_moves(board, 2)
