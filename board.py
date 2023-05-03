@@ -11,16 +11,6 @@ class Board:
     def __init__(self, size):
         self.size = size
         self.__board = [[None for file in range(size)] for rank in range(size)]
-        self.__white_king = None
-        self.__white_pawns = []
-        self.__white_knights = []
-        self.__white_rooks = []
-        self.__white_queens = []
-        self.__black_king = None
-        self.__black_pawns = []
-        self.__black_knights = []
-        self.__black_rooks = []
-        self.__black_queens = []
         self.__win_state = None
         self.player_color = "White"
         self.player_turn = "White"
@@ -44,57 +34,22 @@ class Board:
         # add piece based on type
         if piece_type == 'Pawn':
             self.__board[rank][file] = Pawn(color, file, rank)
-            if color == 'White':
-                self.__white_pawns.append(self.__board[rank][file])
-            else:
-                self.__black_pawns.append(self.__board[rank][file])
         elif piece_type == 'Knight':
             self.__board[rank][file] = Knight(color, file, rank)
-            if color == 'White':
-                self.__white_knights.append(self.__board[rank][file])
-            else:
-                self.__black_knights.append(self.__board[rank][file])
         elif piece_type == 'Rook':
             self.__board[rank][file] = Rook(color, file, rank)
-            if color == 'White':
-                self.__white_rooks.append(self.__board[rank][file])
-            else:
-                self.__black_rooks.append(self.__board[rank][file])
         elif piece_type == 'Queen':
             self.__board[rank][file] = Queen(color, file, rank)
-            if color == 'White':
-                self.__white_queens.append(self.__board[rank][file])
-            else:
-                self.__black_queens.append(self.__board[rank][file])
         elif piece_type == 'King':
             self.__board[rank][file] = King(color, file, rank)
-            if color == 'White':
-                self.__white_king = self.__board[rank][file]
-            else:
-                self.__black_king = self.__board[rank][file]
         else:
             pass
 
     def setup(self):
-        for file in range(self.size):
-            self.add_piece('White', 'Pawn', file, 1)
-            self.add_piece('Black', 'Pawn', file, self.size - 1)
-
-        self.add_piece('White', 'Rook', 0, 0)
-        self.add_piece('White', 'Knight', 1, 0)
-        self.add_piece('White', 'Queen', 2, 0)
-        self.add_piece('White', 'King', 3, 0)
-        self.add_piece('White', 'Knight', 4, 0)
-        self.add_piece('White', 'Rook', 5, 0)
-
-        self.add_piece('Black', 'Rook', 0, 5)
-        self.add_piece('Black', 'Knight', 1, 5)
-        self.add_piece('Black', 'Queen', 2, 5)
-        self.add_piece('Black', 'King', 3, 5)
-        self.add_piece('Black', 'Knight', 4, 5)
-        self.add_piece('Black', 'Rook', 5, 5)
+        self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
 
     def fenn_decode(self, fenn_string):
+        self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
         # decode fenn string and add pieces to the board
         file = 0
         rank = 0
@@ -142,6 +97,9 @@ class Board:
         return self.__board[rank][file]
 
     def push(self, move):
+        if self.__board[move.dest_rank][move.dest_file] is not None:
+            if self.__board[move.dest_rank][move.dest_file].piece_type == 'King':
+                self.__win_state = move.piece.color
         self.__board[move.dest_rank][move.dest_file] = self.__board[move.piece.rank][move.piece.file]
         self.__board[move.piece.rank][move.piece.file] = None
         self.__board[move.dest_rank][move.dest_file].rank = move.dest_rank

@@ -33,7 +33,41 @@ class Gui:
         self.__button_board = [[None for file in range(
             board.size)] for rank in range(board.size)]
         self.init_complete = False
-        self.init_board(self.board)  # draw the initial board
+        self.init_gui()
+
+    def init_gui(self):
+        text = 'Play as White'
+        button_white = tk.Button(
+            self.left_frame, bg='white', text=text)
+        button_white.config(borderwidth=0)
+        button_white.config(command=self.play_white)
+        button_white.bind('<Button-1>')
+        button_white.pack(side=tk.TOP, pady=10)
+
+        text = 'Play as Black'
+        button_black = tk.Button(
+            self.left_frame, bg='white', text=text)
+        button_black.config(borderwidth=0)
+        button_black.config(command=self.play_black)
+        button_black.bind('<Button-1>')
+        button_black.pack(side=tk.TOP, pady=10)
+
+        self.left_frame.pack(side=tk.LEFT)
+        self.window.mainloop()
+
+    def play_white(self):
+        self.board.setup()
+        self.board.player_color = 'White'
+        self.init_board(self.board)
+        self.redraw_board()
+        self.init_complete = True
+
+    def play_black(self):
+        self.board.setup()
+        self.board.player_color = 'Black'
+        self.init_board(self.board)
+        self.redraw_board()
+        self.init_complete = True
 
     def init_board(self, board):
         for rank in range(board.size):
@@ -67,7 +101,6 @@ class Gui:
         self.right_frame.pack(side=tk.RIGHT)
         self.color_board()
         self.selected_piece = None
-        self.init_complete = True
 
     def color_board(self):
         for rank in range(self.board.size):
@@ -91,9 +124,11 @@ class Gui:
     def click(self, file, rank):
         if not self.init_complete:
             return
+        if self.board.win_state is not None:
+            return
         square = self.board.square(file, rank)
         if self.selected_piece is None:
-            if square is not None:
+            if square is not None and square.color == self.board.player_turn:
                 self.selected_piece = (file, rank)
                 print(self.selected_piece)
                 self.highlight_moves(file, rank)
@@ -104,14 +139,10 @@ class Gui:
             self.unhighlight_moves(file, rank)
         else:
             # move piece
-            # print('move piece' + str(self.selected_piece) + str((file, rank)))
             self.unhighlight_moves(
                 self.selected_piece[0], self.selected_piece[1])
             self.move_piece(file, rank)
             self.selected_piece = None
-
-    def main_loop(self):
-        self.window.mainloop()
 
     def move_piece(self, file, rank):
         move_list = self.board.square(
