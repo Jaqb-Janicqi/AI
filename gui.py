@@ -152,7 +152,7 @@ class Gui:
         if len(move) == 0:
             return
         self.board.push(move[0])
-        self.board.player_color = 'White' if self.board.player_color == 'Black' else 'Black'
+        self.board.player_turn = 'White' if self.board.player_turn == 'Black' else 'Black'
         self.redraw_board()
 
     def highlight_moves(self, file, rank):
