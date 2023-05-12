@@ -96,7 +96,7 @@ class Gui:
                 if board.player_color == 'White':
                     button.grid(column=file, row=board.size - rank - 1)
                 else:
-                    button.grid(column=file, row=rank)
+                    button.grid(column=board.size - file - 1, row=rank)
                 button.bind('<Button-1>', self.click(file, rank))
         self.right_frame.pack(side=tk.RIGHT)
         self.color_board()
