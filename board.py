@@ -47,6 +47,7 @@ class Board:
 
     def setup(self):
         self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
+        # self.fenn_decode('/P///p/')
 
     def fenn_decode(self, fenn_string):
         self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
@@ -100,7 +101,10 @@ class Board:
         if self.__board[move.dest_rank][move.dest_file] is not None:
             if self.__board[move.dest_rank][move.dest_file].piece_type == 'King':
                 self.__win_state = move.piece.color
-        self.__board[move.dest_rank][move.dest_file] = self.__board[move.piece.rank][move.piece.file]
+        if move.piece.piece_type is 'Pawn' and (move.dest_rank == 0 or move.dest_rank == self.size - 1):
+            self.__board[move.dest_rank][move.dest_file] = Queen(move.piece.color, move.piece.file, move.piece.rank)
+        else:
+            self.__board[move.dest_rank][move.dest_file] = self.__board[move.piece.rank][move.piece.file]
         self.__board[move.piece.rank][move.piece.file] = None
         self.__board[move.dest_rank][move.dest_file].rank = move.dest_rank
         self.__board[move.dest_rank][move.dest_file].file = move.dest_file

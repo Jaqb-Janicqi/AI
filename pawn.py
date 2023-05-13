@@ -13,13 +13,15 @@ class Pawn(Piece):
             move = Move(self, self.file, self.rank +
                         direction, None, None, None, None)
             self.moves.append(move)
-        if board.is_occupied((self.file + 1, self.rank + direction)) and not \
-                board.is_occupied_by_same_color((self.file + 1, self.rank + direction), self.color):
-            move = Move(self, self.file + 1, self.rank +
-                        direction, None, None, None, None)
-            self.moves.append(move)
-        if board.is_occupied((self.file - 1, self.rank + direction)) and not \
-                board.is_occupied_by_same_color((self.file - 1, self.rank + direction), self.color):
-            move = Move(self, self.file - 1, self.rank +
-                        direction, None, None, None, None)
-            self.moves.append(move)
+        if board.is_in_bounds((self.file + 1, self.rank + direction)):
+            if board.is_occupied((self.file + 1, self.rank + direction)) and not \
+                    board.is_occupied_by_same_color((self.file + 1, self.rank + direction), self.color):
+                move = Move(self, self.file + 1, self.rank +
+                            direction, None, None, None, None)
+                self.moves.append(move)
+        if board.is_in_bounds((self.file - 1, self.rank + direction)):
+            if board.is_occupied((self.file - 1, self.rank + direction)) and not \
+                    board.is_occupied_by_same_color((self.file - 1, self.rank + direction), self.color):
+                move = Move(self, self.file - 1, self.rank +
+                            direction, None, None, None, None)
+                self.moves.append(move)
