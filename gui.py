@@ -144,6 +144,8 @@ class Gui:
             self.move_piece(file, rank)
             self.selected_piece = None
 
+            # mcts
+
     def move_piece(self, file, rank):
         move_list = self.board.square(
             self.selected_piece[0], self.selected_piece[1]).moves
@@ -152,7 +154,6 @@ class Gui:
         if len(move) == 0:
             return
         self.board.push(move[0])
-        self.board.player_turn = 'White' if self.board.player_turn == 'Black' else 'Black'
         self.redraw_board()
 
     def highlight_moves(self, file, rank):
