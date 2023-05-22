@@ -33,6 +33,8 @@ class Board:
         print('   ', end='')
         for file in range(self.size):
             print(file, end=' ')
+        print()
+        print()
 
     def add_piece(self, color, piece_type, file, rank):
         # add piece based on type
@@ -70,9 +72,18 @@ class Board:
             pass
 
     def setup(self):
-        self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
+        self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
+        self.__win_state = None
+        self.player_color = "White"
         self.player_turn = "White"
+        self.white_pieces = []
+        self.black_pieces = []
+        self.moves = []
+        self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
+        # self.player_turn = "White"
         # self.fenn_decode('/P///p/')
+        # self.fenn_decode('/////')
+        # self.fenn_decode('k/K')
 
     def fenn_decode(self, fenn_string):
         self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
@@ -122,54 +133,64 @@ class Board:
     def square(self, file, rank):
         return self.__board[rank][file]
 
-    def push(self, move):
-        if self.__board[move.dest_rank][move.dest_file] is not None:
-            if self.__board[move.dest_rank][move.dest_file].piece_type == 'King':
-                self.__win_state = move.piece.color
-        captured_piece = self.__board[move.dest_rank][move.dest_file]
+    def push(self, move, state = None):
+        if state is None:
+            state = self
+        source = state.__board[move.piece.rank][move.piece.file]
+        target = state.__board[move.dest_rank][move.dest_file]
+        if state.__board[move.dest_rank][move.dest_file] is not None:
+            if state.__board[move.dest_rank][move.dest_file].piece_type == 'King':
+                state.__win_state = state.player_turn
+        captured_piece = state.__board[move.dest_rank][move.dest_file]
         if captured_piece is not None:
-            if self.player_turn == 'White':
-                self.black_pieces.remove(captured_piece)
+            if state.player_turn == 'White':
+                state.black_pieces.remove(captured_piece)
             else:
-                self.white_pieces.remove(captured_piece)
-        if move.piece.piece_type is 'Pawn' and (move.dest_rank == 0 or move.dest_rank == self.size - 1):
-            self.add_piece(move.piece.color, 'Queen', move.dest_file, move.dest_rank)
+                state.white_pieces.remove(captured_piece)
+        if move.piece.piece_type is 'Pawn' and (move.dest_rank == 0 or move.dest_rank == state.size - 1):
+            state.add_piece(move.piece.color, 'Queen', move.dest_file, move.dest_rank)
         else:
-            self.__board[move.dest_rank][move.dest_file] = self.__board[move.piece.rank][move.piece.file]
-        self.__board[move.dest_rank][move.dest_file].moved()
-        self.__board[move.piece.rank][move.piece.file] = None
-        self.__board[move.dest_rank][move.dest_file].file = move.dest_file
-        self.__board[move.dest_rank][move.dest_file].rank = move.dest_rank
-        self.player_turn = 'White' if self.player_turn == 'Black' else 'Black'
+            state.__board[move.dest_rank][move.dest_file] = state.__board[move.piece.rank][move.piece.file]
+        state.__board[move.dest_rank][move.dest_file].moved()
+        state.__board[move.piece.rank][move.piece.file] = None
+        state.__board[move.dest_rank][move.dest_file].file = move.dest_file
+        state.__board[move.dest_rank][move.dest_file].rank = move.dest_rank
+        state.player_turn = 'White' if state.player_turn == 'Black' else 'Black'
 
-    def get_legal_moves(self, color):
+    def get_legal_moves(self, state):
         legal_moves = []
-        if color == 'White':
-            for piece in self.white_pieces:
-                legal_moves.extend(piece.get_legal_moves(self))
+        if state.player_turn == 'White':
+            for piece in state.white_pieces:
+                piece.generate_moves(state)
+                legal_moves.extend(piece.moves)
         else:
-            for piece in self.black_pieces:
-                legal_moves.extend(piece.get_legal_moves(self))
+            for piece in state.black_pieces:
+                piece.generate_moves(state)
+                legal_moves.extend(piece.moves)
+        x = len(legal_moves)
         return legal_moves
     
-    def get_opponent_value(self, value):
-        return -value
+    def generate_moves(self, state):
+        state.moves = state.get_legal_moves(state)
 
     def get_next_state(self, state, move):
         next_state = copy.deepcopy(state)
-        next_state.push(move)
+        next_state.push(move, next_state)
+        next_state.get_legal_moves(next_state)
         return next_state
 
-    def get_value_and_terminal(self, state, move): # TODO
-        self.__board = state.__board
-        self.player_turn = state.player_turn
-        self.push(move)
-        if self.win_state is not None:
-            if self.win_state == 'White':
-                return (100, True)
+    def get_value(self, state):
+        if state.win_state is not None:
+            if state.win_state == state.player_turn:
+                return -100
             else:
-                return (-100, True)
-        return (0, False)
+                return 100
+        return 0
+    
+    def is_terminal(self, state):
+        if state.win_state is not None:
+            return True
+        return False
 
     @property
     def win_state(self):

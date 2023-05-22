@@ -1,4 +1,6 @@
 import tkinter as tk
+import numpy as np
+import copy
 
 
 def rgb_to_hex(rgb):
@@ -14,7 +16,7 @@ BLACK = rgb_to_hex((0, 0, 0))
 
 
 class Gui:
-    def __init__(self, board):
+    def __init__(self, board, mcts):
         # initialise display
         self.window = tk.Tk()
         self.window.title('Chess')
@@ -22,6 +24,7 @@ class Gui:
         self.window.resizable(False, False)
         self.__pieces = self.load_pieces()
         self.board = board
+        self.mcts = mcts
         self.selected_piece = None
         self.left_frame = tk.Frame(
             self.window, width=200, height=600, bg='grey')
@@ -56,18 +59,25 @@ class Gui:
         self.window.mainloop()
 
     def play_white(self):
+        self.init_complete = False
         self.board.setup()
         self.board.player_color = 'White'
         self.init_board(self.board)
         self.redraw_board()
+        self.mcts.game = copy.deepcopy(self.board)
         self.init_complete = True
 
     def play_black(self):
+        self.init_complete = False
         self.board.setup()
         self.board.player_color = 'Black'
         self.init_board(self.board)
         self.redraw_board()
+        self.mcts.game = copy.deepcopy(self.board)
         self.init_complete = True
+
+        if self.board.win_state is None:
+            self.mcts_move()
 
     def init_board(self, board):
         for rank in range(board.size):
@@ -141,10 +151,19 @@ class Gui:
             # move piece
             self.unhighlight_moves(
                 self.selected_piece[0], self.selected_piece[1])
-            self.move_piece(file, rank)
+            moved = self.move_piece(file, rank)
             self.selected_piece = None
 
-            # mcts
+            if self.board.win_state is None and moved:
+                self.mcts_move()
+
+    def mcts_move(self):
+        mcts_probs, actions = self.mcts.search(copy.deepcopy(self.board))
+        best_action_id = np.argmax(mcts_probs)
+        best_action = actions[best_action_id]
+        self.board.push(best_action)
+        self.redraw_board()
+
 
     def move_piece(self, file, rank):
         move_list = self.board.square(
@@ -152,9 +171,10 @@ class Gui:
         move = list(filter(lambda move: (move.dest_file,
                     move.dest_rank) == (file, rank), move_list))
         if len(move) == 0:
-            return
+            return False
         self.board.push(move[0])
         self.redraw_board()
+        return True
 
     def highlight_moves(self, file, rank):
         self.board.square(file, rank).generate_moves(self.board)
