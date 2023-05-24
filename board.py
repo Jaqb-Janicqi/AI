@@ -79,11 +79,12 @@ class Board:
         self.white_pieces = []
         self.black_pieces = []
         self.moves = []
-        self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
+        # self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
         # self.player_turn = "White"
         # self.fenn_decode('/P///p/')
         # self.fenn_decode('/////')
         # self.fenn_decode('k/K')
+        self.fenn_decode('kqq/////5K')
 
     def fenn_decode(self, fenn_string):
         self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
@@ -136,8 +137,6 @@ class Board:
     def push(self, move, state = None):
         if state is None:
             state = self
-        source = state.__board[move.piece.rank][move.piece.file]
-        target = state.__board[move.dest_rank][move.dest_file]
         if state.__board[move.dest_rank][move.dest_file] is not None:
             if state.__board[move.dest_rank][move.dest_file].piece_type == 'King':
                 state.__win_state = state.player_turn
@@ -167,7 +166,6 @@ class Board:
             for piece in state.black_pieces:
                 piece.generate_moves(state)
                 legal_moves.extend(piece.moves)
-        x = len(legal_moves)
         return legal_moves
     
     def generate_moves(self, state):
@@ -181,10 +179,10 @@ class Board:
 
     def get_value(self, state):
         if state.win_state is not None:
-            if state.win_state == state.player_turn:
-                return -100
+            if state.win_state == 'White':
+                return 1
             else:
-                return 100
+                return -1
         return 0
     
     def is_terminal(self, state):

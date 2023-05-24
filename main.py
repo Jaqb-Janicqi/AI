@@ -8,7 +8,7 @@ board_size = 6
 chess = Board(board_size)
 
 args = { 
-    'num_searches': 200, # 200
+    'num_searches': 1000, # 200
     'C': 1.41
 }
 mcts = MCTS(chess, args)
