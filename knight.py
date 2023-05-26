@@ -13,6 +13,5 @@ class Knight(Piece):
             if board.is_in_bounds((self.file + file_dir, self.rank + rank_dir)):
                 if not board.is_occupied_by_same_color(
                         (self.file + file_dir, self.rank + rank_dir), self.color):
-                    move = Move(self, self.file + file_dir,
-                                self.rank + rank_dir, None, None, None, None)
+                    move = Move(self.file, self.rank, self.file + file_dir, self.rank + rank_dir)
                     self.moves.append(move)

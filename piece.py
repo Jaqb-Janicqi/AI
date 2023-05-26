@@ -41,7 +41,7 @@ class Piece:
             while start_file <= file <= end_file and start_rank <= rank <= end_rank:
                 if board.is_occupied_by_same_color((file, rank), self.color):
                     break
-                move = Move(self, file, rank, None, None, None, None)
+                move = Move(self.file, self.rank, file, rank)
                 self.moves.append(move)
                 if board.is_occupied((file, rank)):
                     break
@@ -59,7 +59,7 @@ class Piece:
             while start_file <= file <= end_file and start_rank <= rank <= end_rank:
                 if board.is_occupied_by_same_color((file, rank), self.color):
                     break
-                move = Move(self, file, rank, None, None, None, None)
+                move = Move(self.file, self.rank, file, rank)
                 self.moves.append(move)
                 if board.is_occupied((file, rank)):
                     break
