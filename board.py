@@ -164,7 +164,7 @@ class Game:
         for rank in range(self.size):
             empty_count = 0
             for file in range(self.size):
-                if board[rank][file] is 0:
+                if board[rank][file] == 0:
                     empty_count += 1
                 else:
                     if empty_count > 0:
@@ -196,7 +196,7 @@ class Game:
         if source_square == 0:
             return False
 
-        if source_square.piece_type is 'Pawn' and (move.dest_rank == 0 or move.dest_rank == state.board_size - 1):
+        if source_square.piece_type == 'Pawn' and (move.dest_rank == 0 or move.dest_rank == state.board_size - 1):
             target_square = Queen(state.player_turn, move.dest_file, move.dest_rank)
         else:
             target_square = source_square

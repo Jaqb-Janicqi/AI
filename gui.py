@@ -78,7 +78,7 @@ class Gui:
         self.mcts.game = copy.deepcopy(self.game)
         self.init_complete = True
 
-        if self.game.win_state is 'None' and self.debug_mode is False:
+        if self.game.win_state == 'None' and self.debug_mode is False:
             self.mcts_move()
 
     def init_board(self, board):
@@ -136,7 +136,7 @@ class Gui:
     def click(self, file, rank):
         if not self.init_complete:
             return
-        if self.game.win_state is not 'None':
+        if self.game.win_state != 'None':
             return
         square = self.game.square(file, rank)
         if self.selected_piece is None:
@@ -167,7 +167,7 @@ class Gui:
             moved = self.move_piece(file, rank)
             self.selected_piece = None
 
-            if self.game.win_state is 'None' and moved:
+            if self.game.win_state == 'None' and moved:
                 tic = time.perf_counter()
                 self.mcts_move()
                 toc = time.perf_counter()

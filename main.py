@@ -10,27 +10,28 @@ import torch
 # initialise chess board
 chess = Game(6)
 
-use_alphazero = True    # must be true because normal mcts is not compatible with the gui
+# env
+train_alphazero = False
+load_model = True
 execution_times = False
-if use_alphazero:
-    args = { 
-        'num_searches': 50, # 200
-        'C': 2,
-        'num_iterations': 4,
-        'num_self_play_iterations': 10,
-        'num_epochs': 4
-    }
-    model = net.ResNet(chess, chess.size**2, chess.size**3)
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    # mcts = MCTS_alphaZero(chess, args, model, execution_times)
+
+args = { 
+    'num_searches': 50,            # 200
+    'C': 2,                        # 2  const!
+    'num_iterations': 3,           # 16
+    'num_self_play_iterations': 2, # 160
+    'num_epochs': 4,               # 16
+    'batch_size': 32,              # 32
+}
+
+model = net.ResNet(chess, chess.size**2, chess.size**3)
+optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+mcts = MCTS_alphaZero(chess, args, model, execution_times)
+
+if train_alphazero:
     alphazero = AlphaZero(chess, optimizer, model, args, execution_times)
     alphazero.learn()
-    # mcts.search(chess)
-else:
-    args = { 
-        'num_searches': 50, # 200
-        'C': 1.41
-    }
-    mcts = MCTS(chess, args)
+if load_model:
+    model.load_state_dict(torch.load(f'models/model_{args["num_iterations"] - 1}.pt'))
 
 gui = Gui(chess, mcts)

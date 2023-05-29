@@ -4,7 +4,7 @@ import math
 import res_net as net
 import torch
 import time
-from board import Game, ActionSpace, State
+from board import Game, State
 
 
 class Node:
@@ -37,9 +37,8 @@ class Node:
             if score_table[i] > best_score:
                 best_child = child
                 best_score = score_table[i]
-        avg = np.sum(score_table) / len(score_table)
-        if best_score == avg:
-            best_child = self.select_random()
+        if np.all(score_table == score_table[0]):
+            return self.select_random()
         return best_child
 
     def select_random(self):
