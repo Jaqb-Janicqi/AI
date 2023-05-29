@@ -62,7 +62,7 @@ class Gui:
 
     def play_white(self):
         self.init_complete = False
-        self.game.setup()
+        self.game.state = self.game.setup()
         self.game.player_color = 'White'
         self.init_board(self.game)
         self.redraw_board()
@@ -71,7 +71,7 @@ class Gui:
 
     def play_black(self):
         self.init_complete = False
-        self.game.setup()
+        self.game.state = self.game.setup()
         self.game.player_color = 'Black'
         self.init_board(self.game)
         self.redraw_board()
@@ -132,6 +132,8 @@ class Gui:
                 else:
                     image = self.__pieces[square.color][square.piece_type]
                 self.__button_board[rank][file].config(image=image) # type: ignore
+        self.window.update_idletasks()
+        self.window.update()
 
     def click(self, file, rank):
         if not self.init_complete:
@@ -166,18 +168,18 @@ class Gui:
                 self.selected_piece[0], self.selected_piece[1]) # type: ignore
             moved = self.move_piece(file, rank)
             self.selected_piece = None
-
+            self.redraw_board()
             if self.game.win_state == 'None' and moved:
                 tic = time.perf_counter()
                 self.mcts_move()
                 toc = time.perf_counter()
                 print(f"Time taken by mcts to move: {toc - tic:0.4f} seconds")
+            self.redraw_board()
 
     def mcts_move(self):
         mcts_probs = self.mcts.search(self.game.state)
         best_action = np.argmax(mcts_probs)
         self.game.push(best_action, self.game.state)
-        self.redraw_board()
 
     def move_piece(self, file, rank):
         move_list = self.game.square(

@@ -4,6 +4,7 @@ import math
 import res_net as net
 import torch
 import time
+from tqdm import trange
 from board import Game, State
 
 
@@ -77,6 +78,8 @@ class MCTS_alphaZero:
     def search(self, state):
         self.root = Node(state, self.args)
 
+        
+        # for _ in trange(self.args['num_searches'], ncols=100, desc='Tree search'):
         for _ in range(self.args['num_searches']):
             node = self.root
             while node.is_fully_expanded():

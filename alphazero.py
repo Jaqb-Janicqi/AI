@@ -33,17 +33,6 @@ class AlphaZero:
             loss.backward()
             self.optimizer.step()
 
-
-            # states = torch.stack([torch.from_numpy(state) for state, _, _ in batch])
-            # action_probs = torch.stack([torch.from_numpy(action_probs) for _, action_probs, _ in batch])
-            # values = torch.stack([torch.from_numpy(np.array([value])) for _, _, value in batch])
-
-            # self.optimizer.zero_grad()
-            # policy, value = self.model(states)
-            # loss = torch.nn.functional.mse_loss(policy, action_probs) + torch.nn.functional.mse_loss(value, values)
-            # loss.backward()
-            # self.optimizer.step()
-
     def self_play(self):
         memory = []
         self.game.setup()
@@ -53,7 +42,8 @@ class AlphaZero:
         while state.win_state == 'None':
             action_probs = self.mcts.search(state)
             memory.append([state, action_probs, state.player_turn])
-            action = np.random.choice(len(action_probs), p=action_probs)
+            temp_action_probs = action_probs ** (1 / self.args['temperature'])
+            action = np.random.choice(len(action_probs), p=temp_action_probs)
             state = self.game.get_next_state(state, action)
         
         return_memory = []
@@ -65,21 +55,16 @@ class AlphaZero:
         return return_memory
 
     def learn(self):
-        for iteration in range(self.args['num_iterations']):
-            print(f'Learning teration: {iteration}')
+        for iteration in trange(self.args['num_iterations'], ncols=100, desc='Learning iteration'):
             memory = []
 
             self.model.eval()
-            for self_play_iteration in range(self.args['num_self_play_iterations']):
-                print(f'   Self play iteration: {self_play_iteration}')
+            for self_play_iteration in trange(self.args['num_self_play_iterations'], ncols=100, desc='Self play iteration'):
                 memory.extend(self.self_play())
             
             self.model.train()
-            for epoch in trange(self.args['num_epochs']):
+            for epoch in trange(self.args['num_epochs'], ncols=100, desc='Epoch'):
                 self.train(memory)
 
-            torch.save(self.model.state_dict(), f'model_{iteration}.pt')
-            torch.save(self.optimizer.state_dict(), f'optimizer_{iteration}.pt')
-            # save to folder models
             torch.save(self.model.state_dict(), f'models/model_{iteration}.pt')
             torch.save(self.optimizer.state_dict(), f'models/optimizer_{iteration}.pt')
