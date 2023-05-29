@@ -1,6 +1,7 @@
 import numpy as np
 import copy
 import math
+import time
 
 
 class Node:
@@ -70,17 +71,34 @@ class MCTS:
 
     def search(self, state):
         self.root = Node(state, self.args, 0)
-        self.root.state.generate_moves(self.root.state)
+        self.root.state.moves = self.root.state.get_legal_moves(self.root.state)
 
         for _ in range(self.args['num_searches']):
             node = self.root
             while node.is_fully_expanded():
+                tic = time.perf_counter()
                 node = node.select()
+                toc = time.perf_counter()
+                # print(f"Select took {toc - tic:0.4f} seconds")
+            
             if not node.state.is_terminal(node.state):
+
+                tic = time.perf_counter()
                 node = node.expand()
+                toc = time.perf_counter()
+                # print(f"Expand took {toc - tic:0.4f} seconds")
+
+                tic = time.perf_counter()
                 node.simulate()
+                toc = time.perf_counter()
+                # print(f"Simulate took {toc - tic:0.4f} seconds")
+            
             value = node.state.get_value(node.state)
+
+            tic = time.perf_counter()
             node.backpropagate(value)
+            toc = time.perf_counter()
+            # print(f"Backpropagate took {toc - tic:0.4f} seconds")
 
         action_probability = np.zeros(len(self.root.children))
         for i, child in enumerate(self.root.children):

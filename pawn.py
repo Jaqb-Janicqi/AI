@@ -9,17 +9,18 @@ class Pawn(Piece):
     def generate_moves(self, board):
         self.moves = []
         direction = 1 if self.color == 'White' else -1
-        if board.is_in_bounds((self.file, self.rank + direction)):
-            if not board.is_occupied((self.file, self.rank + direction)):
-                move = Move(self.file, self.rank, self.file, self.rank + direction)
+        if self.is_in_bounds(self.file, self.rank + direction, board[0].size):
+            dest_square = board[self.rank + direction][self.file]
+            if dest_square == 0:
+                move = Move(self.file, self.rank, self.file, self.rank + direction, self.fenn)
                 self.moves.append(move)
-        if board.is_in_bounds((self.file + 1, self.rank + direction)):     
-            if board.is_occupied((self.file + 1, self.rank + direction)) and not \
-                board.is_occupied_by_same_color((self.file + 1, self.rank + direction), self.color):
-                move = Move(self.file, self.rank, self.file + 1, self.rank + direction)
+        if self.is_in_bounds(self.file + 1, self.rank + direction, board[0].size): 
+            dest_square = board[self.rank + direction][self.file + 1]
+            if dest_square != 0 and dest_square.color != self.color:
+                move = Move(self.file, self.rank, self.file + 1, self.rank + direction, self.fenn)
                 self.moves.append(move)
-        if board.is_in_bounds((self.file - 1, self.rank + direction)):
-            if board.is_occupied((self.file - 1, self.rank + direction)) and not \
-                    board.is_occupied_by_same_color((self.file - 1, self.rank + direction), self.color):
-                move = Move(self.file, self.rank, self.file - 1, self.rank + direction)
+        if self.is_in_bounds(self.file - 1, self.rank + direction, board[0].size):
+            dest_square = board[self.rank + direction][self.file - 1]
+            if dest_square != 0 and dest_square.color != self.color:
+                move = Move(self.file, self.rank, self.file - 1, self.rank + direction, self.fenn)
                 self.moves.append(move)

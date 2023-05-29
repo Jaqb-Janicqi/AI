@@ -1,40 +1,35 @@
-from board import Board
+from board import Game, ActionSpace
 from gui import Gui
 from mcts_alphazero import MCTS_alphaZero
 from mcts import MCTS
 import res_net as net
 import time
+from alphazero import AlphaZero
+import torch
 
 # initialise chess board
-board_size = 6
-chess = Board(board_size)
-# measure time
-tic = time.time()
-action_space = chess.calculate_action_space()
-toc = time.time()
-print('Time to calculate action space: ', toc - tic)
-chess.action_space_size = len(action_space)
-chess.action_space = action_space
-chess.setup()
+chess = Game(6)
 
-model = net.ResNet(chess, chess.action_space_size, chess.size**2)
-
-
-
-alphazero = True
-if alphazero:
+use_alphazero = True
+if use_alphazero:
     args = { 
-    'num_searches': 10, # 200
-    'C': 2
+        'num_searches': 50, # 200
+        'C': 2,
+        'num_iterations': 4,
+        'num_self_play_iterations': 10,
+        'num_epochs': 4
     }
-    mcts = MCTS_alphaZero(chess, args, model, action_space)
+    model = net.ResNet(chess, chess.size**2, chess.size**3)
+    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
+    mcts = MCTS_alphaZero(chess, args, model)
+    alphazero = AlphaZero(chess, optimizer, model, args)
+    alphazero.learn()
     # mcts.search(chess)
 else:
     args = { 
-    'num_searches': 200, # 200
-    'C': 1.41
+        'num_searches': 50, # 200
+        'C': 1.41
     }
     mcts = MCTS(chess, args)
-gui = Gui(chess, mcts)
 
-# gui = Gui(chess, mcts)
+gui = Gui(chess, mcts)

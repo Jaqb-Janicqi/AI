@@ -10,8 +10,10 @@ class Knight(Piece):
         self.moves = []
         for file_dir, rank_dir in [(2, 1), (2, -1), (-2, 1), (-2, -1),
                                    (1, 2), (1, -2), (-1, 2), (-1, -2)]:
-            if board.is_in_bounds((self.file + file_dir, self.rank + rank_dir)):
-                if not board.is_occupied_by_same_color(
-                        (self.file + file_dir, self.rank + rank_dir), self.color):
-                    move = Move(self.file, self.rank, self.file + file_dir, self.rank + rank_dir)
+            dest_rank, dest_file = self.rank + rank_dir, self.file + file_dir
+            if self.is_in_bounds(dest_rank, dest_file, board[0].size):
+                if board[dest_rank][dest_file] != 0 and board[dest_rank][dest_file].color == self.color:
+                    pass
+                else:
+                    move = Move(self.file, self.rank, dest_file, dest_rank, self.fenn)
                     self.moves.append(move)

@@ -32,7 +32,7 @@ class ResNet(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(32 * game.size * game.size, game.action_space_size)
+            nn.Linear(32 * game.size * game.size, game.action_space.action_space_size)
         )
         self.value_head = nn.Sequential(
             nn.Conv2d(num_hidden, 3, kernel_size=3, padding=1),

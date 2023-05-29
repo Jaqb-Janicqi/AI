@@ -3,18 +3,20 @@ import copy
 import math
 import res_net as net
 import torch
+import time
+from board import Game, ActionSpace, State
 
 
 class Node:
     def __init__(self, state, args, parent=None, action_taken=None, prior=0) -> None:
         self.args = args
-        self.state = state
-        self.parent = parent
-        self.action_taken = action_taken
+        self.state: State = state
+        self.parent: Node = parent  # type: ignore
+        self.action_taken: int = action_taken   # type: ignore
         self.children = []
         self.visit_count = 0
         self.value = 0
-        self.prior = prior
+        self.prior: float = prior
 
     def get_score(self, child):
         if child.visit_count == 0:
@@ -38,18 +40,25 @@ class Node:
         avg = np.sum(score_table) / len(score_table)
         if best_score == avg:
             best_child = self.select_random()
-        best_child.state.generate_moves(best_child.state)
         return best_child
 
     def select_random(self):
         return np.random.choice(self.children)
 
-    def expand(self, policy):
-        for action, prob in enumerate(policy):
-            if prob > 0:
-                self.children.append(
-                    Node(self.state.get_next_state(self.state, action), self.args, self, action, prob)
-                )
+    def expand(self, actions, probs, game):
+        for i in range(len(actions)):
+            next_state = game.get_next_state(self.state, actions[i])
+
+            if next_state is False: # catch illegal moves
+                game.save_to_fenn('fenn.txt', self.state.board)
+                action = game.action_space.decode(actions[i])
+                print(f'Illegal move: {action}')
+                exit()
+            
+            self.children.append(
+                Node(next_state, self.args, self, actions[i], probs[i])
+            )
+            # game.print(self.children[-1].state.board, actions[i])
 
     def backpropagate(self, value):
         self.visit_count += 1
@@ -59,45 +68,44 @@ class Node:
 
 @torch.no_grad()
 class MCTS_alphaZero:
-    def __init__(self, game, args, model: net.ResNet, action_space) -> None:
-        self.game = game
+    def __init__(self, game, args, model: net.ResNet) -> None:
+        self.game: Game = game
         self.args = args
         self.root = None
         self.model = model
-        self.action_space = action_space
-        self.action_space_size = len(action_space)
 
     def search(self, state):
         self.root = Node(state, self.args)
-        self.root.state.generate_moves(self.root.state)
 
         for _ in range(self.args['num_searches']):
             node = self.root
             while node.is_fully_expanded():
                 node = node.select()
 
-            value = node.state.get_value(node.state)
+            value = node.state.value()
 
-            if not node.state.is_terminal(node.state):
-                # policy, value = net.get_tensor_state(node.state.encode_state(node.state))
-                policy, value = self.model(net.get_tensor_state(node.state.encode_state(node.state)))
+            if value == 0:
+                policy, value = self.model(net.get_tensor_state(node.state.encode()))
                 policy = net.get_policy(policy)
-                legal_policy = np.zeros(self.action_space_size)
-                for move in node.state.moves:
-                    encoded_move_id = node.state.encode_to_action_space(move)
-                    legal_policy[encoded_move_id] = policy[encoded_move_id]
-                legal_policy = legal_policy / np.sum(legal_policy)
+
+                moves = node.state.get_legal_moves()
+                move_probs = np.zeros(len(moves), dtype=np.float32)
+                move_ids = np.zeros(len(moves), dtype=np.uint32)
+
+                for position, move in enumerate(moves):
+                    encoded_move_id = self.game.action_space.encode(move)
+                    move_probs[position] = policy[encoded_move_id]
+                    move_ids[position] = encoded_move_id
+
+                move_probs = move_probs / np.sum(move_probs)
                 value = net.get_value(value)
-                # valid_moves = node.state.moves
-                node.expand(legal_policy)
 
-            node.backpropagate(value)   # type: ignore
+                node.expand(move_ids, move_probs, self.game)
 
-        action_probability = np.zeros(len(self.root.children))
-        for i, child in enumerate(self.root.children):
-            action_probability[i] = child.visit_count
-        action_probability = action_probability / np.sum(action_probability)
-        actions = []
+            node.backpropagate(value)
+
+        action_probability = np.zeros(self.game.action_space.action_space_size, dtype=np.float32)
         for child in self.root.children:
-            actions.append(child.action_taken)
-        return action_probability, actions
+            action_probability[child.action_taken] = child.visit_count
+        action_probability = action_probability / np.sum(action_probability)
+        return action_probability

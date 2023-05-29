@@ -3,32 +3,108 @@ from knight import Knight
 from rook import Rook
 from queen import Queen
 from king import King
+from piece import Piece
 from decode_fenn_piece import type_from_char
 from move import Move
 import copy
 import numpy as np
 
-class Board:
-    def __init__(self, size):
-        self.size = size
-        self.__board = [[None for file in range(size)] for rank in range(size)]
-        self.__win_state = None
-        self.player_color = "White"
-        self.player_turn = "White"
-        self.white_pieces = []
-        self.black_pieces = []
-        self.moves = []
-        self.action_space_size = 0
-        self.action_space = []
 
-    def print(self):  # print matrix of the board with fenn notation for pieces
+class ActionSpace:
+    def __init__(self, size) -> None:
+        self.action_space = []
+        self.action_space_size = 0
+        self.board_size = size
+        self.piece_offsets = {
+            'r': np.zeros((size, size), dtype=np.uint16),
+            'n': np.zeros((size, size), dtype=np.uint16),
+            'q': np.zeros((size, size), dtype=np.uint16),
+            'k': np.zeros((size, size), dtype=np.uint16),
+            'p': np.zeros((size, size), dtype=np.uint16),
+            'P': np.zeros((size, size), dtype=np.uint16),
+        }
+
+    def encode(self, move: Move) -> int:
+        piece_char = move.piece_char.lower() if move.piece_char != 'P' else move.piece_char
+        piece_offset = self.piece_offsets[piece_char][move.source_rank][move.source_file]
+        for i in range(piece_offset, self.action_space_size):
+            if self.action_space[i].source_rank == move.source_rank and \
+                self.action_space[i].source_file == move.source_file and \
+                self.action_space[i].dest_rank == move.dest_rank and \
+                self.action_space[i].dest_file == move.dest_file:
+                return i
+        raise Exception('Move not found in action space')
+    
+    def decode(self, action: int) -> Move:
+        return self.action_space[action]
+    
+
+class State:
+    def __init__(self, board: np.ndarray, board_size: int, player_turn: str) -> None:
+        self.board: np.ndarray = board
+        self.board_size: int = board_size
+        self.player_turn: str = player_turn
+        self.win_state: str = 'None'
+
+    def get_legal_moves(self):
+        legal_moves = []
+        for rank in range(self.board_size):
+            for file in range(self.board_size):
+                if self.board[rank][file] != 0:
+                    if self.board[rank][file].color == self.player_turn:
+                        piece = self.board[rank][file]
+                        piece.generate_moves(self.board)
+                        legal_moves.extend(piece.moves)
+                        piece.moves = []
+        return legal_moves
+    
+    def copy(self):
+        return copy.deepcopy(self)
+    
+    def value(self):
+        if self.win_state == 'White':
+            return 1
+        elif self.win_state == 'Black':
+            return -1
+        return 0
+
+    def encode(self):
+        encoded_white = np.zeros((self.board_size, self.board_size)).astype(np.float32)
+        encoded_black = np.zeros((self.board_size, self.board_size)).astype(np.float32)
+        encoded_blank = np.zeros((self.board_size, self.board_size)).astype(np.float32)
+        for rank in range(self.board_size):
+            for file in range(self.board_size):
+                if self.board[rank][file] != 0:
+                    if self.board[rank][file].color == 'White':
+                        encoded_white[rank][file] = 1.0
+                    else:
+                        encoded_black[rank][file] = 1.0
+                else:
+                    encoded_blank[rank][file] = 1.0
+        encoded_state = np.stack((encoded_white, encoded_black, encoded_blank)).astype(np.float32)
+        return encoded_state
+
+
+class Game:
+    def __init__(self, size: int):
+        self.size: int = size
+        self.state: State = self.setup()
+        self.player_color: str = "White"
+        self.moves: list = []
+        self.action_space: ActionSpace = self.calculate_action_space()
+
+    def print(self, board, action_taken=None):  # print matrix of the board with fenn notation for pieces
         for rank in range(self.size):
             print(rank, end='  ')
             for file in range(self.size):
-                if self.__board[rank][file] == None:
-                    print('  ', end='')
+                if action_taken != None and \
+                    self.action_space.decode(action_taken).source_rank == rank and \
+                        self.action_space.decode(action_taken).source_file == file:
+                    print('X', end=' ')
+                elif board[rank][file] == 0:
+                    print(' ', end=' ')
                 else:
-                    print(self.__board[rank][file], end=' ')
+                    print(board[rank][file], end=' ')
                 if file == self.size - 1:
                     print()
         print()
@@ -38,63 +114,37 @@ class Board:
         print()
         print()
 
-    def add_piece(self, color, piece_type, file, rank, board=None):
-        if board == None:
-            board = self.__board
+    def add_piece(self, color, piece_type, file, rank, board) -> None:
         # add piece based on type
         if piece_type == 'Pawn':
             board[rank][file] = Pawn(color, file, rank)
-            if color == 'White':
-                self.white_pieces.append(self.__board[rank][file])
-            else:
-                self.black_pieces.append(self.__board[rank][file])
         elif piece_type == 'Knight':
             board[rank][file] = Knight(color, file, rank)
-            if color == 'White':
-                self.white_pieces.append(self.__board[rank][file])
-            else:
-                self.black_pieces.append(self.__board[rank][file])
         elif piece_type == 'Rook':
             board[rank][file] = Rook(color, file, rank)
-            if color == 'White':
-                self.white_pieces.append(self.__board[rank][file])
-            else:
-                self.black_pieces.append(self.__board[rank][file])
         elif piece_type == 'Queen':
             board[rank][file] = Queen(color, file, rank)
-            if color == 'White':
-                self.white_pieces.append(self.__board[rank][file])
-            else:
-                self.black_pieces.append(self.__board[rank][file])
         elif piece_type == 'King':
             board[rank][file] = King(color, file, rank)
-            if color == 'White':
-                self.white_pieces.append(self.__board[rank][file])
-            else:
-                self.black_pieces.append(self.__board[rank][file])
         else:
             pass
 
-    def setup(self):
-        self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
-        self.__win_state = None
-        self.player_color = "White"
-        self.player_turn = "White"
-        self.white_pieces = []
-        self.black_pieces = []
-        self.moves = []
-        self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
+    def setup(self) -> State:
+        return self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
+        # self.fenn_decode('4kr/2r1n1/p1pq1P/PpP3/RPQ3/K5')
         # self.player_turn = "White"
         # self.fenn_decode('/P///p/')
         # self.fenn_decode('/////')
         # self.fenn_decode('k/K')
         # self.fenn_decode('kqq/////K')
+        # self.fenn_decode('r1k2r/p1pppp/q1nn/P2PPP/RPPQ/1N1KNR')
 
-    def fenn_decode(self, fenn_string):
-        self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
-        # decode fenn string and add pieces to the board
-        file = 0
-        rank = 0
+    def fenn_decode(self, fenn_string) -> State:
+        board: np.ndarray = np.zeros((self.size, self.size), dtype=Piece)
+        player_turn: str = "White"
+        state: State = State(board, self.size, player_turn)
+        file: int = 0
+        rank: int = 0
         for char in fenn_string:
             if char == '/':
                 file = 0
@@ -103,164 +153,120 @@ class Board:
                 file += int(char)
             else:
                 (color, piece_type) = type_from_char(char)
-                self.add_piece(color, piece_type, file, self.size - 1 - rank)
+                self.add_piece(color, piece_type, file, self.size - 1 - rank, state.board)
                 file += 1
+        return state
 
-    def is_valid_move(self, move, color):
-        # check if move (file, rank) is in bounds and not occupied by same color
-        if self.is_in_bounds(move):
-            if not self.is_occupied_by_same_color(move, color):
-                return True
-        return False
+    def save_to_fenn(self, filename, board=None) -> None:
+        if board is None:
+            board = self.state.board
+        fenn_string = ''
+        for rank in range(self.size):
+            empty_count = 0
+            for file in range(self.size):
+                if board[rank][file] is 0:
+                    empty_count += 1
+                else:
+                    if empty_count > 0:
+                        fenn_string += str(empty_count)
+                        empty_count = 0
+                    fenn_string += board[rank][file].fenn  # type: ignore
+            if empty_count > 0:
+                fenn_string += str(empty_count)
+            if rank < self.size - 1:
+                fenn_string += '/'
 
-    def is_in_bounds(self, move):
-        # check if move (file, rank) is in bounds of the board
-        (file, rank) = move
-        if file < 0 or file >= self.size or rank < 0 or rank >= self.size:
+        # fenn_string = fenn_string[::-1]
+        with open(filename, 'w') as f:
+            f.write(fenn_string)
+        f.close()
+
+    def square(self, file, rank):   # gui use
+        return self.state.board[rank][file]
+
+    def push(self, move_id: int, state: State):
+        move = self.action_space.decode(move_id)
+
+        target_square = state.board[move.dest_rank][move.dest_file]
+        if target_square != 0:
+            if target_square.piece_type == 'King':
+                state.win_state = state.player_turn
+
+        source_square = state.board[move.source_rank][move.source_file]
+        if source_square == 0:
             return False
+
+        if source_square.piece_type is 'Pawn' and (move.dest_rank == 0 or move.dest_rank == state.board_size - 1):
+            target_square = Queen(state.player_turn, move.dest_file, move.dest_rank)
+        else:
+            target_square = source_square
+        target_square.file = move.dest_file
+        target_square.rank = move.dest_rank
+        state.board[move.dest_rank][move.dest_file] = target_square
+        state.board[move.source_rank][move.source_file] = 0
+        state.player_turn = 'White' if state.player_turn == 'Black' else 'Black'
         return True
 
-    def is_occupied(self, move):
-        # check if move (file, rank) is occupied by a piece
-        (file, rank) = move
-        if self.__board[rank][file] is not None:
-            return True
-        return False
-
-    def is_occupied_by_same_color(self, move, color):
-        # check if move (file, rank) is occupied by a piece of the same color
-        (file, rank) = move
-        if self.__board[rank][file] is not None:
-            if self.__board[rank][file] is None or self.__board[rank][file].color == color:
-                return True
-        return False
-
-    def square(self, file, rank):
-        return self.__board[rank][file]
-
-    def push(self, move, state = None):
-        if state is None:
-            state = self
-        if isinstance(move, int):
-            move = state.action_space[move]
-        if state.__board[move.dest_rank][move.dest_file] is not None:
-            if state.__board[move.dest_rank][move.dest_file].piece_type == 'King':
-                state.__win_state = state.player_turn
-        captured_piece = state.__board[move.dest_rank][move.dest_file]
-        source_piece = state.__board[move.source_rank][move.source_file]
-        if captured_piece is not None:
-            if state.player_turn == 'White':
-                state.black_pieces.remove(captured_piece)
-            else:
-                state.white_pieces.remove(captured_piece)
-        if source_piece.piece_type is 'Pawn' and (move.dest_rank == 0 or move.dest_rank == state.size - 1):
-            state.add_piece(source_piece.color, 'Queen', move.dest_file, move.dest_rank)
-        else:
-            state.__board[move.dest_rank][move.dest_file] = state.__board[move.source_rank][move.source_file]
-        state.__board[move.dest_rank][move.dest_file].moved()
-        state.__board[move.source_rank][move.source_file] = None
-        state.__board[move.dest_rank][move.dest_file].file = move.dest_file
-        state.__board[move.dest_rank][move.dest_file].rank = move.dest_rank
-        state.player_turn = 'White' if state.player_turn == 'Black' else 'Black'
-
-    def get_legal_moves(self, state):
-        legal_moves = []
-        if state.player_turn == 'White':
-            for piece in state.white_pieces:
-                piece.generate_moves(state)
-                legal_moves.extend(piece.moves)
-        else:
-            for piece in state.black_pieces:
-                piece.generate_moves(state)
-                legal_moves.extend(piece.moves)
-        return legal_moves
-    
-    def generate_moves(self, state):
-        state.moves = state.get_legal_moves(state)
-
-    def get_next_state(self, state, move):
-        if isinstance(move, int):
-            move = state.action_space[move]
-        next_state = copy.deepcopy(state)
-        next_state.push(move, next_state)
-        next_state.generate_moves(next_state)
+    def get_next_state(self, state: State, move: int):
+        next_state = state.copy()
+        self.push(move, next_state)
         return next_state
 
-    def get_value(self, state):
-        if state.win_state is not None:
-            if state.win_state == 'White':
-                return 1
-            else:
-                return -1
-        return 0
-    
-    def is_terminal(self, state):
-        if state.win_state is not None:
-            return True
-        return False
+    def is_in_bounds(self, file, rank, board_size):
+        return 0 <= file < board_size and 0 <= rank < board_size
 
-    def encode_state(self, state=None):
-        if state is None:
-            state = self
-        encoded_white = np.zeros((state.size, state.size)).astype(np.float32)
-        encoded_black = np.zeros((state.size, state.size)).astype(np.float32)
-        encoded_blank = np.zeros((state.size, state.size)).astype(np.float32)
-        for piece in state.white_pieces:
-            encoded_white[piece.rank][piece.file] = np.float32(piece.id)
-            encoded_blank[piece.rank][piece.file] = np.float32(piece.id)
-        for piece in state.black_pieces:
-            encoded_black[piece.rank][piece.file] = np.float32(piece.id)
-            encoded_blank[piece.rank][piece.file] = np.float32(piece.id)
-        encoded_blank = np.logical_not(encoded_blank)
-        encoded_state = np.stack((encoded_white, encoded_black, encoded_blank)).astype(np.float32)
-        return encoded_state
-    
     def calculate_action_space(self):
         actions = []
         pieces = ['r', 'n', 'q', 'k']
+        board = np.zeros((self.size, self.size), dtype=Piece)
+        action_space = ActionSpace(self.size)
         for piece_char in pieces:
             for file in range(self.size):
                 for rank in range(self.size):
-                    self.add_piece('White', type_from_char(piece_char)[1], file, rank)
-                    self.__board[rank][file].generate_moves(self) # type: ignore
-                    actions.extend(self.__board[rank][file].moves) # type: ignore
-                    self.__board[rank][file] = None
+                    action_space.piece_offsets[piece_char][rank][file] = len(actions)
+                    self.add_piece('White', type_from_char(piece_char)[1], file, rank, board)
+                    board[rank][file].generate_moves(board)
+                    actions.extend(board[rank][file].moves)
+                    board[rank][file] = 0
 
         piece_char = 'p'
         for file in range(self.size):
             for rank in range(1, self.size):
-                self.add_piece(type_from_char(piece_char)[0], type_from_char(piece_char)[1], file, rank)
-                for file_offset, rank_offset in[(-1, -1), (1, -1), (-1, 1), (1, 1)]:
-                    if self.is_in_bounds((file + file_offset, rank + rank_offset)):
+                action_space.piece_offsets[piece_char][rank][file] = len(actions)
+                color, piece_type = type_from_char(piece_char)
+                self.add_piece(color, piece_type, file, rank, board)
+                for file_offset, rank_offset in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+                    if self.is_in_bounds(file + file_offset, rank + rank_offset, self.size):
                         if piece_char == 'P':
-                            self.add_piece('Black', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset)
+                            self.add_piece('Black', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset, board)
                         else:
-                            self.add_piece('White', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset)
-                self.__board[rank][file].generate_moves(self) # type: ignore
-                actions.extend(self.__board[rank][file].moves) # type: ignore
-                self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
+                            self.add_piece('White', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset, board)
+                board[rank][file].generate_moves(board)
+                actions.extend(board[rank][file].moves)
+                board = np.zeros((self.size, self.size), dtype=Piece)
 
         piece_char = 'P'
         for file in range(self.size):
             for rank in range(self.size - 1):
-                self.add_piece(type_from_char(piece_char)[0], type_from_char(piece_char)[1], file, rank)
-                for file_offset, rank_offset in[(-1, -1), (1, -1), (-1, 1), (1, 1)]:
-                    if self.is_in_bounds((file + file_offset, rank + rank_offset)):
+                action_space.piece_offsets[piece_char][rank][file] = len(actions)
+                color, piece_type = type_from_char(piece_char)
+                self.add_piece(color, piece_type, file, rank, board)
+                for file_offset, rank_offset in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
+                    if self.is_in_bounds(file + file_offset, rank + rank_offset, self.size):
                         if piece_char == 'P':
-                            self.add_piece('Black', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset)
+                            self.add_piece('Black', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset, board)
                         else:
-                            self.add_piece('White', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset)
-                self.__board[rank][file].generate_moves(self) # type: ignore
-                actions.extend(self.__board[rank][file].moves) # type: ignore
-                self.__board = [[None for file in range(self.size)] for rank in range(self.size)]
-        return actions
+                            self.add_piece('White', type_from_char(piece_char)[1], file + file_offset, rank + rank_offset, board)
+                board[rank][file].generate_moves(board)
+                actions.extend(board[rank][file].moves)
+                board = np.zeros((self.size, self.size), dtype=Piece)
     
-    def encode_to_action_space(self, move):
-        # from action_space return index of move having same source and dest
-        for i, action in enumerate(self.action_space):
-            if action.source_file == move.source_file and action.source_rank == move.source_rank and action.dest_file == move.dest_file and action.dest_rank == move.dest_rank:
-                return i
+        action_space.action_space = actions
+        action_space.action_space_size = len(actions)
+        print(f'Action space size: {action_space.action_space_size}')
+        return action_space
+
 
     @property
     def win_state(self):
-        return self.__win_state
+        return self.state.win_state
