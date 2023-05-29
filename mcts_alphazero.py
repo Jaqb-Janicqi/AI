@@ -68,11 +68,12 @@ class Node:
 
 @torch.no_grad()
 class MCTS_alphaZero:
-    def __init__(self, game, args, model: net.ResNet) -> None:
+    def __init__(self, game, args, model: net.ResNet, execution_times) -> None:
         self.game: Game = game
         self.args = args
         self.root = None
         self.model = model
+        self.execution_times = execution_times
 
     def search(self, state):
         self.root = Node(state, self.args)
@@ -80,14 +81,23 @@ class MCTS_alphaZero:
         for _ in range(self.args['num_searches']):
             node = self.root
             while node.is_fully_expanded():
+                tic = time.perf_counter()
                 node = node.select()
+                toc = time.perf_counter()
+                if self.execution_times:
+                    print(f'Select: {toc - tic:0.4f} seconds')
 
             value = node.state.value()
 
             if value == 0:
+                tic = time.perf_counter()
                 policy, value = self.model(net.get_tensor_state(node.state.encode()))
                 policy = net.get_policy(policy)
+                toc = time.perf_counter()
+                if self.execution_times:
+                    print(f'Inference: {toc - tic:0.4f} seconds')
 
+                tic = time.perf_counter()
                 moves = node.state.get_legal_moves()
                 move_probs = np.zeros(len(moves), dtype=np.float32)
                 move_ids = np.zeros(len(moves), dtype=np.uint32)
@@ -99,8 +109,16 @@ class MCTS_alphaZero:
 
                 move_probs = move_probs / np.sum(move_probs)
                 value = net.get_value(value)
+                toc = time.perf_counter()
+                if self.execution_times:
+                    print(f'Legal policy: {toc - tic:0.4f} seconds')
 
+                tic = time.perf_counter()
                 node.expand(move_ids, move_probs, self.game)
+                toc = time.perf_counter()
+                if self.execution_times:
+                    print(f'Expand: {toc - tic:0.4f} seconds')
+                    print('\n\n')
 
             node.backpropagate(value)
 

@@ -10,7 +10,8 @@ import torch
 # initialise chess board
 chess = Game(6)
 
-use_alphazero = True
+use_alphazero = True    # must be true because normal mcts is not compatible with the gui
+execution_times = False
 if use_alphazero:
     args = { 
         'num_searches': 50, # 200
@@ -21,8 +22,8 @@ if use_alphazero:
     }
     model = net.ResNet(chess, chess.size**2, chess.size**3)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    mcts = MCTS_alphaZero(chess, args, model)
-    alphazero = AlphaZero(chess, optimizer, model, args)
+    # mcts = MCTS_alphaZero(chess, args, model, execution_times)
+    alphazero = AlphaZero(chess, optimizer, model, args, execution_times)
     alphazero.learn()
     # mcts.search(chess)
 else:
