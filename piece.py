@@ -32,15 +32,17 @@ class Piece:
         start_file, start_rank = self.bind_move(self.file - move_range, self.rank - move_range, board[0].size)
         end_file, end_rank = self.bind_move(self.file + move_range, self.rank + move_range, board[0].size)
 
-        for file_tuple, rank_tuple in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
-            file, rank = self.file + file_tuple, self.rank + rank_tuple
+        for file_dir, rank_dir in [(1, 0), (-1, 0), (0, 1), (0, -1)]:
+            file, rank = self.file + file_dir, self.rank + rank_dir
             while start_file <= file <= end_file and start_rank <= rank <= end_rank:
                 if board[rank][file] != 0 and board[rank][file].color == self.color:
                     break
                 move = Move(self.file, self.rank, file, rank, self.fenn)
                 self.moves.append(move)
-                file += file_tuple
-                rank += rank_tuple
+                if board[rank][file] != 0:
+                    break
+                file += file_dir
+                rank += rank_dir
 
     def generate_diagonal_moves(self, board, move_range):
         start_file, start_rank = self.bind_move(self.file - move_range, self.rank - move_range, board[0].size)
@@ -53,6 +55,8 @@ class Piece:
                     break
                 move = Move(self.file, self.rank, file, rank, self.fenn)
                 self.moves.append(move)
+                if board[rank][file] != 0:
+                    break
                 file += file_dir
                 rank += rank_dir
 

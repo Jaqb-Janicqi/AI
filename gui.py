@@ -80,6 +80,8 @@ class Gui:
 
         if self.game.win_state == 'None' and self.debug_mode is False:
             self.mcts_move()
+            self.redraw_board()
+
 
     def init_board(self, board):
         for rank in range(board.size):
