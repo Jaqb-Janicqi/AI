@@ -70,34 +70,49 @@ class MCTS_alphaZero:
     def __init__(self, game, args, model: net.ResNet, execution_times) -> None:
         self.game: Game = game
         self.args = args
-        self.root = None
+        self.root: Node = None # type: ignore
         self.model = model
         self.execution_times = execution_times
 
-    def search(self, state):
-        self.root = Node(state, self.args)
+    def clear_tree(self, node = None):
+        if node is None:
+            node = self.root
+        for child in node.children:
+            child.value = 0
+            child.visit_count = 0
+            self.clear_tree(child)
+
+    def search(self, state, oponent_action=None):
+        # try to reuse the tree when possible
+        # if tree does not exist, initialize with current game state
+        if oponent_action is None or self.root is None:
+            self.root = Node(state, self.args)
+        else:
+            # find branch corresponding to opponent's action and make it root of the tree
+            found = False
+            for child in self.root.children:
+                if child.action_taken == oponent_action:
+                    self.root = child
+                    self.root.parent = None
+                    found = True
+                    break
+            if not found:
+                self.root = Node(state, self.args)
+            else:
+                self.clear_tree()
 
         # for _ in trange(self.args['num_searches'], ncols=100, desc='Tree search'):
         for _ in range(self.args['num_searches']):
             node = self.root
             while node.is_fully_expanded():
-                tic = time.perf_counter()
                 node = node.select()
-                toc = time.perf_counter()
-                if self.execution_times:
-                    print(f'Select: {toc - tic:0.4f} seconds')
 
             value = node.state.value()
 
             if value == 0:
-                tic = time.perf_counter()
                 policy, value = self.model(net.get_tensor_state(node.state.encode()))
                 policy = net.get_policy(policy)
-                toc = time.perf_counter()
-                if self.execution_times:
-                    print(f'Inference: {toc - tic:0.4f} seconds')
 
-                tic = time.perf_counter()
                 moves = node.state.get_legal_moves()
                 move_probs = np.zeros(len(moves), dtype=np.float32)
                 move_ids = np.zeros(len(moves), dtype=np.uint32)
@@ -109,16 +124,7 @@ class MCTS_alphaZero:
 
                 move_probs = move_probs / np.sum(move_probs)
                 value = net.get_value(value)
-                toc = time.perf_counter()
-                if self.execution_times:
-                    print(f'Legal policy: {toc - tic:0.4f} seconds')
-
-                tic = time.perf_counter()
                 node.expand(move_ids, move_probs, self.game)
-                toc = time.perf_counter()
-                if self.execution_times:
-                    print(f'Expand: {toc - tic:0.4f} seconds')
-                    print('\n\n')
 
             node.backpropagate(value)
 

@@ -14,7 +14,6 @@ class Piece:
 
     def assign_id(self):
         # assign a unique id to each piece
-        # this is not implemented in particular pieces to ease id management
         if self.piece_type == 'Pawn':
             return 1
         elif self.piece_type == 'Knight':

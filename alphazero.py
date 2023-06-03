@@ -1,9 +1,11 @@
 import mcts_alphazero as mcts
+# import mcts_alphazero_keep_branches as mcts
 import torch
 import torch.nn.functional as F
 import numpy as np
 import random
 from tqdm import trange
+torch.manual_seed(0)
 
 class AlphaZero:
     def __init__(self, game, optimizer, model, args, execution_times):
@@ -26,7 +28,7 @@ class AlphaZero:
 
             out_policy, out_value = self.model(state)
             policy_loss = F.cross_entropy(out_policy, policy_target)
-            value_loss = F.mse_loss(out_value, value_target)
+            value_loss = F.cross_entropy(out_value, value_target)
             loss = policy_loss + value_loss
 
             self.optimizer.zero_grad()
@@ -39,16 +41,24 @@ class AlphaZero:
         state = self.game.state.copy()
         player = 'White'
 
-        while state.win_state == 'None':
-            action_probs = self.mcts.search(state)
+        last_action = None
+        while state.win_state == '':
+            action_probs = self.mcts.search(state=state)#, oponent_action=last_action)
             memory.append([state, action_probs, state.player_turn])
             temp_action_probs = action_probs ** (1 / self.args['temperature'])
             action = np.random.choice(len(action_probs), p=temp_action_probs)
+            last_action = action
             state = self.game.get_next_state(state, action)
         
         return_memory = []
         for mem_state, mem_action_probs, mem_player in memory:
-            value = 1 if mem_player == player else -1
+            if mem_state.win_state == '':
+                value = 0
+            elif mem_state.win_state == 'White':
+                value = 1
+            else:
+                value = -1
+
             encoded_state = mem_state.encode()
             return_memory.append([encoded_state, mem_action_probs, value])
 

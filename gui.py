@@ -39,6 +39,7 @@ class Gui:
         self.init_complete = False
         self.debug_mode = debug_mode
         self.init_gui()
+        self.last_player_action = None
 
     def init_gui(self):
         text = 'Play as White'
@@ -78,7 +79,7 @@ class Gui:
         self.mcts.game = copy.deepcopy(self.game)
         self.init_complete = True
 
-        if self.game.win_state == 'None' and self.debug_mode is False:
+        if self.game.win_state == '' and self.debug_mode is False:
             self.mcts_move()
             self.redraw_board()
 
@@ -92,7 +93,7 @@ class Gui:
                     color = GREY
                 square = board.square(file, rank)
                 text = str(file) + str(' ') + str(rank)
-                if square is 0:
+                if square == 0:
                     button = tk.Button(
                         self.right_frame, image=self.pixel, width=98, height=98, bg=color, text=text)
                     button.config(borderwidth=0)
@@ -140,7 +141,7 @@ class Gui:
     def click(self, file, rank):
         if not self.init_complete:
             return
-        if self.game.win_state != 'None':
+        if self.game.win_state != '':
             return
         square = self.game.square(file, rank)
         if self.selected_piece is None:
@@ -171,7 +172,7 @@ class Gui:
             moved = self.move_piece(file, rank)
             self.selected_piece = None
             self.redraw_board()
-            if self.game.win_state == 'None' and moved:
+            if self.game.win_state == '' and moved:
                 tic = time.perf_counter()
                 self.mcts_move()
                 toc = time.perf_counter()
@@ -179,7 +180,7 @@ class Gui:
             self.redraw_board()
 
     def mcts_move(self):
-        mcts_probs = self.mcts.search(self.game.state)
+        mcts_probs = self.mcts.search(state=self.game.state) # oponent_action=self.last_player_action, 
         best_action = np.argmax(mcts_probs)
         self.game.push(best_action, self.game.state)
 
@@ -193,6 +194,7 @@ class Gui:
         move_id = self.game.action_space.encode(move[0])
         self.game.push(move_id, self.game.state)
         self.redraw_board()
+        self.last_player_action = move_id
         return True
 
     def highlight_moves(self, file, rank):

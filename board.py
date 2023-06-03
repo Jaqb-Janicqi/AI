@@ -44,7 +44,7 @@ class State:
         self.board: np.ndarray = board
         self.board_size: int = board_size
         self.player_turn: str = player_turn
-        self.win_state: str = 'None'
+        self.win_state: str = ''
 
     def get_legal_moves(self):
         legal_moves = []
@@ -76,9 +76,9 @@ class State:
             for file in range(self.board_size):
                 if self.board[rank][file] != 0:
                     if self.board[rank][file].color == 'White':
-                        encoded_white[rank][file] = 1.0
+                        encoded_white[rank][file] = self.board[rank][file].id
                     else:
-                        encoded_black[rank][file] = 1.0
+                        encoded_black[rank][file] = self.board[rank][file].id
                 else:
                     encoded_blank[rank][file] = 1.0
         encoded_state = np.stack((encoded_white, encoded_black, encoded_blank)).astype(np.float32)
