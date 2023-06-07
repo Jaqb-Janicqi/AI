@@ -19,6 +19,9 @@ class AlphaZero:
     def train(self, training_data):
         random.shuffle(training_data)
         for batch_index in range(0, len(training_data), self.args['batch_size']):
+            if batch_index == len(training_data) - 1: # list[x:x] = []
+                break
+
             batch = training_data[batch_index:min(len(training_data) - 1, batch_index + self.args['batch_size'])]
             state, policy_target, value_target = zip(*batch)
             state, policy_target, value_target = \
