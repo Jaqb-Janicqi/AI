@@ -65,8 +65,8 @@ class Node:
         if self.parent is not None:
             self.parent.backpropagate(-value)
 
-@torch.no_grad()
-class MCTS_alphaZero:
+
+class MCTS_alpha_zero:
     def __init__(self, game, args, model: net.ResNet, execution_times) -> None:
         self.game: Game = game
         self.args = args

@@ -77,8 +77,8 @@ class MCTS_alphaZero:
     def search(self, state):
         self.root = Node(state, self.args)
 
-        # for _ in trange(self.args['num_searches'], ncols=100, desc='Tree search'):
-        for _ in range(self.args['num_searches']):
+        for _ in trange(self.args['num_searches'], ncols=100, desc='Tree search'):
+        #for _ in range(self.args['num_searches']):
             node = self.root
             while node.is_fully_expanded():
                 tic = time.perf_counter()

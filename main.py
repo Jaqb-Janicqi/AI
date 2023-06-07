@@ -13,40 +13,25 @@ chess = Game(6)
 
 # env
 train_alphazero = False
-load_model = True
+load_model = False
 execution_times = False
 fast = True
 
 
 # temp -> inf: explore, temp -> 0: exploit, temp -> 1: no change
 # changes to temperature are exponential
-args_fast = { 
-    'num_searches': 100,                         # 200
+args = { 
+    'num_searches': 5,                          # 200
     'C': 2,                                     # 2  const!
-    'num_iterations': 2,                        # 16
-    'num_self_play_iterations': 8,              # 128
+    'num_iterations': 32,                        # 16
+    'num_self_play_iterations': 64,              # 128
     'num_epochs': 4,                            # 16
     'batch_size': 32,                           # 32
     'temperature': 1000,                        # 1.25
-    'weight_decay': 0.01,                         # 0.0001
-    'learning_rate': 0.5,                      # 0.001
-    'momentum': 0.9                            # 0.9
+    'weight_decay': 0.01,                       # 0.0001
+    'learning_rate': 0.1,                       # 0.001
+    'momentum': 0.9                             # 0.9
 }
-
-args_slow = { 
-    'num_searches': 100,                         # 200
-    'C': 2,                                     # 2  const!
-    'num_iterations': 8,                       # 16
-    'num_self_play_iterations': 16,            # 128
-    'num_epochs': 16,                           # 16
-    'batch_size': 32,                           # 32
-    'temperature': 1.1,                        # 1.25
-    'weight_decay': 0.001,                         # 0.0001
-    'learning_rate': 0.2,                      # 0.001
-    'momentum': 0.9                            # 0.9
-}
-
-args = args_fast if fast else args_slow
 
 # model size = board_size^3 / scaler
 hidden_scaler = 3

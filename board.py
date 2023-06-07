@@ -90,10 +90,11 @@ class Game:
         self.size: int = size
         self.state: State = self.setup()
         self.player_color: str = "White"
-        self.moves: list = []
         self.action_space: ActionSpace = self.calculate_action_space()
 
-    def print(self, board, action_taken=None):  # print matrix of the board with fenn notation for pieces
+    def print(self, board = None, action_taken=None):  # print matrix of the board with fenn notation for pieces
+        if board == None:
+            board = self.state.board
         for rank in range(self.size):
             print(rank, end='  ')
             for file in range(self.size):
@@ -131,6 +132,7 @@ class Game:
 
     def setup(self) -> State:
         return self.fenn_decode('rnqknr/pppppp///PPPPPP/RNQKNR')
+        # return self.fenn_decode('p/////')
         # self.fenn_decode('4kr/2r1n1/p1pq1P/PpP3/RPQ3/K5')
         # self.player_turn = "White"
         # self.fenn_decode('/P///p/')
