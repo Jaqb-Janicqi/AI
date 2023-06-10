@@ -138,7 +138,7 @@ class Game:
         # self.fenn_decode('/P///p/')
         # self.fenn_decode('/////')
         # self.fenn_decode('k/K')
-        # self.fenn_decode('kqq/////K')
+        # return self.fenn_decode('k/////K')
         # self.fenn_decode('r1k2r/p1pppp/q1nn/P2PPP/RPPQ/1N1KNR')
 
     def fenn_decode(self, fenn_string) -> State:

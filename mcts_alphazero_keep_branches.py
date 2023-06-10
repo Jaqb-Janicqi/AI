@@ -4,12 +4,12 @@ import math
 import res_net as net
 import torch
 import time
-from tqdm import trange
+from tqdm import tqdm, trange
 from board import Game, State
 
 
 class Node:
-    def __init__(self, state, args, parent=None, action_taken=None, prior=0) -> None:
+    def __init__(self, state, args, depth=0, parent=None, action_taken=None, prior=0) -> None:
         self.args = args
         self.state: State = state
         self.parent: Node = parent  # type: ignore
@@ -18,13 +18,14 @@ class Node:
         self.visit_count = 0
         self.value = 0
         self.prior: float = prior
+        self.depth: int = depth
 
     def get_score(self, child):
         if child.visit_count == 0:
-            return 0
+                q_value = 0
         else:
-            q = 1 - ((child.value / child.visit_count) + 1) / 2
-            return q + self.args['C'] * math.sqrt(self.visit_count / (child.visit_count + 1)) * child.prior
+                q_value = 1 - ((child.value / child.visit_count) + 1) / 2
+        return q_value + self.args['C'] * (math.sqrt(self.visit_count) / (child.visit_count + 1)) * child.prior
 
     def is_fully_expanded(self):
         return len(self.children) > 0
@@ -48,15 +49,8 @@ class Node:
     def expand(self, actions, probs, game):
         for i in range(len(actions)):
             next_state = game.get_next_state(self.state, actions[i])
-
-            if next_state is False: # catch illegal moves
-                game.save_to_fenn('fenn.txt', self.state.board)
-                action = game.action_space.decode(actions[i])
-                print(f'Illegal move: {action}')
-                exit()
-            
             self.children.append(
-                Node(next_state, self.args, self, actions[i], probs[i])
+                Node(next_state, self.args, self.depth + 1, self, actions[i], probs[i])
             )
 
     def backpropagate(self, value):
@@ -80,6 +74,7 @@ class MCTS_alpha_zero:
         for child in node.children:
             child.value = 0
             child.visit_count = 0
+            child.depth = node.depth + 1
             self.clear_tree(child)
 
     def search(self, state, oponent_action=None):
@@ -94,6 +89,7 @@ class MCTS_alpha_zero:
                 if child.action_taken == oponent_action:
                     self.root = child
                     self.root.parent = None
+                    self.root.depth = 0
                     found = True
                     break
             if not found:
@@ -101,17 +97,22 @@ class MCTS_alpha_zero:
             else:
                 self.clear_tree()
 
-        # for _ in trange(self.args['num_searches'], ncols=100, desc='Tree search'):
-        for _ in range(self.args['num_searches']):
+        
+        depth_indicator = tqdm(ncols=100, desc='Current depth', leave=False, bar_format='{desc}')
+        for _ in trange(self.args['num_searches'], desc="MCTS", ncols=100, leave=False):
             node = self.root
             while node.is_fully_expanded():
                 node = node.select()
 
             value = node.state.value()
+            depth_indicator.set_description(f"Current depth: {node.depth}")
 
             if value == 0:
                 policy, value = self.model(net.get_tensor_state(node.state.encode()))
                 policy = net.get_policy(policy)
+
+                if np.max(policy) == 1:
+                    raise Exception("Model is overfitted")
 
                 moves = node.state.get_legal_moves()
                 move_probs = np.zeros(len(moves), dtype=np.float32)
@@ -121,10 +122,13 @@ class MCTS_alpha_zero:
                     encoded_move_id = self.game.action_space.encode(move)
                     move_probs[position] = policy[encoded_move_id]
                     move_ids[position] = encoded_move_id
-
+                
+                move_probs = np.power(move_probs, 1 / self.args['temperature'])
                 move_probs = move_probs / np.sum(move_probs)
                 value = net.get_value(value)
-                node.expand(move_ids, move_probs, self.game)
+
+                if node.depth < self.args['depth_limit']:
+                    node.expand(move_ids, move_probs, self.game)
 
             node.backpropagate(value)
 
