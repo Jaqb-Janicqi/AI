@@ -9,9 +9,9 @@ from board import Game, State
 
 
 class Node:
-    def __init__(self, state, args, depth=0, parent=None, action_taken=None, prior=0) -> None:
+    def __init__(self, args, depth=0, parent=None, action_taken=None, prior=0, state=None) -> None:
         self.args = args
-        self.state: State = state
+        self.state: State = state # type: ignore
         self.parent: Node = parent  # type: ignore
         self.action_taken: int = action_taken   # type: ignore
         self.children = []
@@ -48,9 +48,8 @@ class Node:
 
     def expand(self, actions, probs, game):
         for i in range(len(actions)):
-            next_state = game.get_next_state(self.state, actions[i])
             self.children.append(
-                Node(next_state, self.args, self.depth + 1, self, actions[i], probs[i])
+                Node(self.args, self.depth + 1, self, actions[i], probs[i])
             )
 
     def backpropagate(self, value):
@@ -81,7 +80,7 @@ class MCTS_alpha_zero:
         # try to reuse the tree when possible
         # if tree does not exist, initialize with current game state
         if oponent_action is None or self.root is None:
-            self.root = Node(state, self.args)
+            self.root = Node(self.args, state=state)
         else:
             # find branch corresponding to opponent's action and make it root of the tree
             found = False
@@ -93,16 +92,18 @@ class MCTS_alpha_zero:
                     found = True
                     break
             if not found:
-                self.root = Node(state, self.args)
+                self.root = Node(self.args, state=state)
             else:
                 self.clear_tree()
 
-        
         depth_indicator = tqdm(ncols=100, desc='Current depth', leave=False, bar_format='{desc}')
         for _ in trange(self.args['num_searches'], desc="MCTS", ncols=100, leave=False):
             node = self.root
             while node.is_fully_expanded():
                 node = node.select()
+            
+            if node.parent is not None:
+                node.state = self.game.get_next_state(node.parent.state, node.action_taken)
 
             value = node.state.value()
             depth_indicator.set_description(f"Current depth: {node.depth}")
