@@ -1,11 +1,12 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 torch.manual_seed(0)
 
 
 def get_tensor_state(encoded_board):
-    return torch.tensor(encoded_board).unsqueeze(0)
+    return torch.tensor(encoded_board).unsqueeze(0).unsqueeze(0).float()
 
 
 def get_policy(policy):
@@ -17,10 +18,10 @@ def get_value(value):
 
 
 class ResNet(nn.Module):
-    def __init__(self, game, num_ResBlocks, num_hidden):
+    def __init__(self, in_size, out_size, num_ResBlocks, num_hidden):
         super().__init__()
         self.start_block = nn.Sequential(
-            nn.Conv2d(3, num_hidden, kernel_size=3, padding=1),
+            nn.Conv2d(1, num_hidden, kernel_size=3, padding=1),
             nn.BatchNorm2d(num_hidden),
             nn.ReLU()
         )
@@ -32,14 +33,14 @@ class ResNet(nn.Module):
             nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(32 * game.size * game.size, game.action_space.action_space_size)
+            nn.Linear(32 * in_size, out_size)
         )
         self.value_head = nn.Sequential(
             nn.Conv2d(num_hidden, 3, kernel_size=3, padding=1),
             nn.BatchNorm2d(3),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(3 * game.size * game.size, 1),
+            nn.Linear(3 * in_size, 1),
             nn.Tanh()
         )
 

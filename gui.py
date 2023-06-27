@@ -1,7 +1,4 @@
 import tkinter as tk
-import numpy as np
-import copy
-import time
 
 
 def rgb_to_hex(rgb):
@@ -17,15 +14,21 @@ BLACK = rgb_to_hex((0, 0, 0))
 
 
 class Gui:
-    def __init__(self, board, mcts, debug_mode=False):
+    def __init__(self, alphazero, board_size, game, actionspace, debug_mode=False):
+        self.game = game
+        self.actionspace = actionspace
+        self.board_size = board_size
+        self.alphazero = alphazero
+        self.debug_mode = debug_mode
+        self.player_color = None
+        self.state = None
+
         # initialise display
         self.window = tk.Tk()
         self.window.title('Chess')
         self.window.geometry('800x600')
         self.window.resizable(False, False)
         self.__pieces = self.load_pieces()
-        self.game = board
-        self.mcts = mcts
         self.selected_piece = None
         self.left_frame = tk.Frame(
             self.window, width=200, height=600, bg='grey')
@@ -35,9 +38,8 @@ class Gui:
         self.right_frame.pack(side=tk.RIGHT)
         self.pixel = tk.PhotoImage(width=0, height=0)
         self.__button_board = [[None for file in range(
-            board.size)] for rank in range(board.size)]
+            board_size)] for rank in range(board_size)]
         self.init_complete = False
-        self.debug_mode = debug_mode
         self.init_gui()
         self.last_player_action = None
 
@@ -61,155 +63,156 @@ class Gui:
         self.left_frame.pack(side=tk.LEFT)
         self.window.mainloop()
 
-    def play_white(self):
+    def init_state(self):
         self.init_complete = False
-        self.game.state = self.game.setup()
-        self.game.player_color = 'White'
-        self.init_board(self.game)
+        self.state = self.game.load_default(self.board_size)
+        self.init_board()
         self.redraw_board()
-        self.mcts.game = copy.deepcopy(self.game)
+
+    def play_white(self):
+        self.player_color = 1
+        self.init_state()
         self.init_complete = True
 
     def play_black(self):
-        self.init_complete = False
-        self.game.state = self.game.setup()
-        self.game.player_color = 'Black'
-        self.init_board(self.game)
-        self.redraw_board()
-        self.mcts.game = copy.deepcopy(self.game)
+        self.player_color = -1
+        self.init_state()
         self.init_complete = True
 
-        if self.game.win_state == '' and self.debug_mode is False:
-            self.mcts_move()
+        if self.state.win == 0 and self.debug_mode is False:
+            self.alphazero_move()
             self.redraw_board()
 
-
-    def init_board(self, board):
-        for rank in range(board.size):
-            for file in range(board.size):
+    def init_board(self):
+        for rank in range(self.board_size):
+            for file in range(self.board_size):
                 if (rank + file) % 2 == 0:
                     color = WHITE
                 else:
                     color = GREY
-                square = board.square(file, rank)
+                square = self.state.square(rank, file)
                 text = str(file) + str(' ') + str(rank)
                 if square == 0:
                     button = tk.Button(
                         self.right_frame, image=self.pixel, width=98, height=98, bg=color, text=text)
                     button.config(borderwidth=0)
                     button.config(command=lambda file=file,
-                                  rank=rank: self.click(file, rank))
-                    self.__button_board[rank][file] = button # type: ignore
+                                  rank=rank: self.click(rank, file))
+                    self.__button_board[rank][file] = button  # type: ignore
                 else:
-                    image = self.__pieces[square.color][square.piece_type]
+                    square_color = self.game.get_color(square)
+                    image = self.__pieces[str(square_color)][str(abs(square))]
                     button = tk.Button(
                         self.right_frame, image=image, width=98, height=98, bg=color, text=text)
                     button.config(borderwidth=0)
                     button.config(command=lambda file=file,
-                                  rank=rank: self.click(file, rank))
-                    self.__button_board[rank][file] = button # type: ignore
-                if board.player_color == 'White':
-                    button.grid(column=file, row=board.size - rank - 1)
+                                  rank=rank: self.click(rank, file))
+                    self.__button_board[rank][file] = button  # type: ignore
+                if self.player_color == 1:
+                    button.grid(column=file, row=self.board_size - rank - 1)
                 else:
-                    button.grid(column=board.size - file - 1, row=rank)
-                button.bind('<Button-1>', self.click(file, rank))
+                    button.grid(column=self.board_size - file - 1, row=rank)
+                button.bind('<Button-1>', self.click(rank, file))
         self.right_frame.pack(side=tk.RIGHT)
         self.color_board()
         self.selected_piece = None
 
     def color_board(self):
-        for rank in range(self.game.size):
-            for file in range(self.game.size):
+        for rank in range(self.board_size):
+            for file in range(self.board_size):
                 if (rank + file) % 2 == 0:
                     color = WHITE
                 else:
                     color = GREY
-                self.__button_board[rank][file].config(bg=color) # type: ignore
+                self.__button_board[rank][file].config(
+                    bg=color)  # type: ignore
 
     def redraw_board(self):
-        for rank in range(self.game.size):
-            for file in range(self.game.size):
-                square = self.game.square(file, rank)
+        for rank in range(self.board_size):
+            for file in range(self.board_size):
+                square = self.state.square(rank, file)
                 if square == 0:
                     image = self.pixel
                 else:
-                    image = self.__pieces[square.color][square.piece_type]
-                self.__button_board[rank][file].config(image=image) # type: ignore
+                    square_color = self.game.get_color(square)
+                    image = self.__pieces[str(square_color)][str(abs(square))]
+                self.__button_board[rank][file].config(
+                    image=image)  # type: ignore
         self.window.update_idletasks()
         self.window.update()
 
-    def click(self, file, rank):
+    def click(self, rank, file):
         if not self.init_complete:
             return
-        if self.game.win_state != '':
+        if self.state.win != 0:
             return
-        square = self.game.square(file, rank)
+        square = self.state.square(rank, file)
+        square_color = self.game.get_color(square)
         if self.selected_piece is None:
-            if self.debug_mode is True:
-                if square != 0:
-                    self.selected_piece = (file, rank)
-                    print(self.selected_piece)
-                    self.highlight_moves(file, rank)
-                elif self.selected_piece == (file, rank):
-                    # deselect piece
-                    print('deselect piece' + str(self.selected_piece))
-                    self.selected_piece = None
-                    self.unhighlight_moves(file, rank)
-            else:
-                if square != 0 and square.color == self.game.state.player_turn:
-                    self.selected_piece = (file, rank)
-                    print(self.selected_piece)
-                    self.highlight_moves(file, rank)
-                elif self.selected_piece == (file, rank):
-                    # deselect piece
-                    print('deselect piece' + str(self.selected_piece))
-                    self.selected_piece = None
-                    self.unhighlight_moves(file, rank)
+            if square != 0 and square_color == self.state.player_turn:
+                self.selected_piece = (rank, file)
+                print(self.selected_piece)
+                self.highlight_moves(rank, file)
+        elif self.selected_piece == (rank, file):
+            # deselect piece
+            print('deselect piece' + str(self.selected_piece))
+            self.selected_piece = None
+            self.unhighlight_moves(rank, file)
         else:
             # move piece
             self.unhighlight_moves(
-                self.selected_piece[0], self.selected_piece[1]) # type: ignore
-            moved = self.move_piece(file, rank)
+                self.selected_piece[0], self.selected_piece[1])  # type: ignore
+            moved = self.move_piece(rank, file)
             self.selected_piece = None
             self.redraw_board()
-            if self.game.win_state == '' and moved:
-                tic = time.perf_counter()
-                self.mcts_move()
-                toc = time.perf_counter()
-                print(f"Time taken by mcts to move: {toc - tic:0.4f} seconds")
-            self.redraw_board()
+            if self.state.win == 0 and moved is True and self.debug_mode is False:
+                self.alphazero_move()
+                self.redraw_board()
 
-    def mcts_move(self):
-        mcts_probs = self.mcts.search(state=self.game.state) # oponent_action=self.last_player_action, 
-        best_action = np.argmax(mcts_probs)
-        self.game.push(best_action, self.game.state)
+    def alphazero_move(self):
+        best_action = self.alphazero.predict(self.state)
+        self.state = self.state.next_state(best_action)
 
-    def move_piece(self, file, rank):
-        move_list = self.game.square(
-            self.selected_piece[0], self.selected_piece[1]).moves # type: ignore
-        move = list(filter(lambda move: (move.dest_file,
-                    move.dest_rank) == (file, rank), move_list))
+    def move_piece(self, rank, file):
+        src_rank, src_file = self.selected_piece
+        move_hashes = self.game.generate_one_piece(
+            self.state.board, src_rank, src_file)
+        moves = []
+        for move_hash in move_hashes:
+            moves.append(self.actionspace.get(move_hash))
+        move = list(filter(lambda move: (move.dst_rank,
+                    move.dst_file) == (rank, file), moves))
         if len(move) == 0:
             return False
-        move_id = self.game.action_space.encode(move[0])
-        self.game.push(move_id, self.game.state)
+        self.state = self.state.next_state(move[0])
         self.redraw_board()
-        self.last_player_action = move_id
         return True
 
-    def highlight_moves(self, file, rank):
-        self.game.square(file, rank).generate_moves(self.game.state.board)
-        for move in self.game.square(file, rank).moves:
-            self.highlight_square(move.dest_file, move.dest_rank)
+    def highlight_moves(self, rank, file):
+        square = self.state.square(rank, file)
+        square_color = self.game.get_color(square)
+        if square_color == self.state.player_turn:
+            move_hashes = self.game.generate_one_piece(
+                self.state.board, rank, file)
+            moves = []
+            for move_hash in move_hashes:
+                moves.append(self.actionspace.get(move_hash))
+            for move in moves:
+                self.highlight_square(move.dst_rank, move.dst_file)
 
-    def highlight_square(self, file, rank):
+    def highlight_square(self, rank, file):
         self.__button_board[rank][file].config(bg=BLUE)
 
-    def unhighlight_moves(self, file, rank):
-        for move in self.game.square(file, rank).moves:
-            self.unhighlight_square(move.dest_file, move.dest_rank)
+    def unhighlight_moves(self, rank, file):
+        move_hashes = self.game.generate_one_piece(
+            self.state.board, rank, file)
+        moves = []
+        for move_hash in move_hashes:
+            moves.append(self.actionspace.get(move_hash))
+        for move in moves:
+            self.unhighlight_square(move.dst_rank, move.dst_file)
 
-    def unhighlight_square(self, file, rank):
+    def unhighlight_square(self, rank, file):
         if (file + rank) % 2 == 0:
             color = WHITE
         else:
@@ -218,18 +221,18 @@ class Gui:
 
     def load_pieces(self):
         pieces = {}
-        pieces['White'] = {}
-        pieces['Black'] = {}
-        pieces['White']['Pawn'] = tk.PhotoImage(file='assets/white_pawn.png')
-        pieces['White']['Rook'] = tk.PhotoImage(file='assets/white_rook.png')
-        pieces['White']['Knight'] = tk.PhotoImage(
+        pieces['1'] = {}
+        pieces['-1'] = {}
+        pieces['1']['1'] = tk.PhotoImage(file='assets/white_pawn.png')
+        pieces['1']['3'] = tk.PhotoImage(file='assets/white_rook.png')
+        pieces['1']['2'] = tk.PhotoImage(
             file='assets/white_knight.png')
-        pieces['White']['Queen'] = tk.PhotoImage(file='assets/white_queen.png')
-        pieces['White']['King'] = tk.PhotoImage(file='assets/white_king.png')
-        pieces['Black']['Pawn'] = tk.PhotoImage(file='assets/black_pawn.png')
-        pieces['Black']['Rook'] = tk.PhotoImage(file='assets/black_rook.png')
-        pieces['Black']['Knight'] = tk.PhotoImage(
+        pieces['1']['4'] = tk.PhotoImage(file='assets/white_queen.png')
+        pieces['1']['5'] = tk.PhotoImage(file='assets/white_king.png')
+        pieces['-1']['1'] = tk.PhotoImage(file='assets/black_pawn.png')
+        pieces['-1']['3'] = tk.PhotoImage(file='assets/black_rook.png')
+        pieces['-1']['2'] = tk.PhotoImage(
             file='assets/black_knight.png')
-        pieces['Black']['Queen'] = tk.PhotoImage(file='assets/black_queen.png')
-        pieces['Black']['King'] = tk.PhotoImage(file='assets/black_king.png')
+        pieces['-1']['4'] = tk.PhotoImage(file='assets/black_queen.png')
+        pieces['-1']['5'] = tk.PhotoImage(file='assets/black_king.png')
         return pieces
